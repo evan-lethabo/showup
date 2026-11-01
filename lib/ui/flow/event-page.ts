@@ -80,6 +80,13 @@ export class EventPageMixin {
         return;
       }
       if (!r.ok || !r.body || r.body.eventId !== eventId) { failed(); return; }
+      // The organiser edited the event: reload so this page shows the new details (and a guest is asked to reply again).
+      var cur = self.state.event;
+      if (typeof r.body.rev === 'string' && cur && cur.rev && r.body.rev !== cur.rev && !self.state.editingEvent) {
+        self.stopResultsPolling();
+        try { window.location.reload(); } catch (e) {}
+        return;
+      }
       if (self.state.resultsError || JSON.stringify(r.body) !== JSON.stringify(self.state.results)) self.setState({ results: r.body, resultsError: false });
       next();
     }, failed);

@@ -16,6 +16,11 @@ export interface EventLinks { guestPath: string; organiserPath?: string }
 
 interface FlowSlot { id: string; iso: string; day: string; title: string; short: string; win: { s: number; e: number } }
 
+/** Changes whenever the organiser edits the title, name, length or schedule. The results API sends the same string, so open pages can spot an edit. */
+export function eventRev(e: { title: string; organiserName: string; durationMin: number; days: { date: string; start: number; end: number }[] }): string {
+  return JSON.stringify([e.title, e.organiserName, e.durationMin, e.days.map((d) => [d.date, d.start, d.end])]);
+}
+
 export function toFlowEvent(ev: StoredEvent, links: EventLinks) {
   const slots: FlowSlot[] = ev.days.map((d) => ({ ...(slotFromIso(d.date) as Omit<FlowSlot, 'win'>), win: { s: d.start, e: d.end } }));
   const first = slots[0];
@@ -31,6 +36,7 @@ export function toFlowEvent(ev: StoredEvent, links: EventLinks) {
     participants: ev.participants || [],
     proposal: null,
     persisted: true,
+    rev: eventRev(ev),
     links,
   };
 }

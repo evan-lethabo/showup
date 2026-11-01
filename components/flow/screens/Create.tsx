@@ -11,6 +11,7 @@ export default function Create({ v }: { v: any }) {
           showup
           <span className="dot">.</span>
         </button>
+        {v.isEditingEvent ? <button type="button" className="text-btn" onClick={v.cancelEditEvent}>Cancel</button> : null}
       </header>
       <main className="wrap page-main">
         <div className="col-grid">
@@ -103,6 +104,7 @@ export default function Create({ v }: { v: any }) {
                     <p className="small">{v.createHint}</p>
                   </>
                 ) : null}
+                {v.hasEditResetWarning ? <p className="small" role="status">{v.editResetWarning}</p> : null}
                 {v.hasCreateError ? <p className="field-error" role="alert">{v.createError}</p> : null}
               </div>
             </div>

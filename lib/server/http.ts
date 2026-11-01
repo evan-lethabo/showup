@@ -1,6 +1,6 @@
 // Route handler logic, kept free of Next.js so it can be tested against an isolated database.
 import { isUnavailable, logDbError, pgCode, type Db } from './db';
-import { authoriseOrganiser, createEvent, deleteEvent, getPublicEvent, guestPath, organiserPath } from './events';
+import { authoriseOrganiser, createEvent, deleteEvent, updateEvent, getPublicEvent, guestPath, organiserPath } from './events';
 import { authenticateGuest, eventPeople, joinEvent, leaveEvent, loadOwnResponse, saveResponse } from './responses';
 import { interpretCondition, MAX_TEXT_CHARS, type InterpretationContext, type ModelTransport } from '../conditions/interpreter';
 import { castVote, closeNow, createProposal, getProposal, withdrawProposal, type Caller } from './proposals';
@@ -207,6 +207,25 @@ export async function handleSaveResponse(eventId: string, req: Request, getDb: (
     // The guest left (or the event was cancelled) while this save was in flight.
     if (pgCode(err) === '23503') return error(401, 'unauthorised', 'Your guest access is not valid.');
     return failure('save-response', err);
+  }
+}
+
+/** Organiser-only: changes the title, organiser name, length or days. Schedule changes clear everyone's answers (see updateEvent). */
+export async function handleUpdateEvent(eventId: string, req: Request, getDb: () => Db, now: Date = new Date()): Promise<Response> {
+  const cred = guestCredential(req);
+  const parsed = await readJson(req);
+  if ('res' in parsed) return parsed.res;
+  try {
+    const db = getDb();
+    const access = await authoriseOrganiser(db, eventId, cred);
+    if (access.status === 'not_found') return error(404, 'not_found', "We couldn't find that event.");
+    if (access.status === 'forbidden') return error(403, 'forbidden', 'Only the organiser can edit this event.');
+    const v = validateCreateEvent(parsed.body, now, { timezone: access.event.timezone, keepDates: new Set(access.event.days.map((d) => d.date)) });
+    if ('error' in v) return error(400, 'invalid_input', v.error.message, v.error.field);
+    const { scheduleChanged } = await updateEvent(db, access.event, v.value);
+    return json(200, { ok: true, scheduleChanged });
+  } catch (err) {
+    return failure('update-event', err);
   }
 }
 

@@ -3,6 +3,7 @@
 import { rankSlots, type EventData, type TimeSlotStats } from '../engine';
 import type { Db } from './db';
 import type { PublicEvent } from './events';
+import { eventRev } from '../ui/utils/persisted-event';
 import { loadEngineResponses, slotIdFor } from './responses';
 
 export interface ResultCounts { startMin: number; endMin: number; free: number; coming: number; maybe: number }
@@ -11,6 +12,8 @@ export interface DayBest extends ResultCounts { names: string[] }
 export interface ResultSlot extends ResultCounts { date: string }
 export interface ResultsDto {
   eventId: string;
+  /** Changes whenever the organiser edits the title, name, length or schedule, so open pages know to reload. */
+  rev: string;
   respondedCount: number;
   best: ResultSlot | null;
   days: { date: string; best: DayBest | null }[];
@@ -55,5 +58,5 @@ export async function computeResults(db: Db, event: PublicEvent): Promise<Result
   const best = b && b.window
     ? { date: b.slot.iso!, ...counts(b.window.s, b.window.e, b.free, b.go, b.tentative) }
     : null;
-  return { eventId: event.id, respondedCount: responses.length, best, days, slots, people: event.participants.map((p) => ({ name: p.name, responded: p.responded })) };
+  return { eventId: event.id, rev: eventRev(event), respondedCount: responses.length, best, days, slots, people: event.participants.map((p) => ({ name: p.name, responded: p.responded })) };
 }

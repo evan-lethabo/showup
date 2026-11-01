@@ -128,7 +128,7 @@ describe('results come from C8', () => {
 
   it('returns no recommendation when nobody would come, and no day result when nobody is free', async () => {
     const { id } = await newEvent();
-    expect(await dto(id)).toEqual({ eventId: id, respondedCount: 0, best: null, days: [{ date: FRI, best: null }, { date: SAT, best: null }], slots: expect.any(Array), people: expect.any(Array) });
+    expect(await dto(id)).toEqual({ eventId: id, rev: expect.any(String), respondedCount: 0, best: null, days: [{ date: FRI, best: null }, { date: SAT, best: null }], slots: expect.any(Array), people: expect.any(Array) });
     await save(id, await join(id, 'Solo'), [{ date: FRI, will: 'if', conds: [needs('Nobody')] }, { date: SAT, will: 'no' }]);
     const r = await dto(id);
     expect(r.best).toBeNull();
@@ -150,7 +150,7 @@ describe('GET /results access and privacy', () => {
     otherGuest = await join(other.id, 'Elsewhere');
   });
 
-  const AGG = ['eventId', 'respondedCount', 'best', 'days', 'slots', 'people'];
+  const AGG = ['eventId', 'rev', 'respondedCount', 'best', 'days', 'slots', 'people'];
   const COUNTS = ['startMin', 'endMin', 'free', 'coming', 'maybe'];
   function assertAggregateOnly(body: any) {
     expect(body.best === null || Object.keys(body.best).sort()).toEqual(body.best === null ? true : ['date', ...COUNTS].sort());

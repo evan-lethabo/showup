@@ -77,6 +77,25 @@ export function cancelStoredEvent(eventId: string, organiserToken: string): Prom
   return deleteWithBearer(`/api/events/${encodeURIComponent(eventId)}`, organiserToken, "We couldn't cancel this event. Try again.");
 }
 
+/** Organiser edits the event. `scheduleChanged` means everyone's answers were cleared. */
+export async function updateStoredEvent(eventId: string, organiserToken: string, body: unknown): Promise<{ ok: true; scheduleChanged: boolean } | { ok: false; status: number; message: string; field?: string }> {
+  const fallback = "We couldn't save your changes. Try again.";
+  try {
+    const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${organiserToken}` },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
+    const j = await res.json().catch(() => null);
+    if (res.ok && j) return { ok: true, scheduleChanged: j.scheduleChanged === true };
+    const err = j && j.error;
+    return { ok: false, status: res.status, message: (err && err.message) || fallback, field: err && err.field };
+  } catch {
+    return { ok: false, status: 0, message: "We couldn't reach the server. Check your connection and try again." };
+  }
+}
+
 /** Guest removes themselves and their availability. */
 export function leaveStoredEvent(eventId: string, credential: string): Promise<DeleteResult> {
   return deleteWithBearer(`/api/events/${encodeURIComponent(eventId)}/response`, credential, "We couldn't remove you from this event. Try again.");

@@ -15,7 +15,7 @@ export function baseState() {
     errors: {}, formError: '', noneWork: false, phase: 'editing', dirty: false,
     sheet: null, sheetClosing: false, liveMsg: '', linkMsg: '', remMsg: '', reminderOpen: false,
     proposeOpen: false, proposeClosing: false, confirmOpen: false, confirmClosing: false, confirmKind: '', confirmTarget: null, confirmBusy: false, confirmError: '', eventGone: false, round: null, roundChanging: false, roundSheetOpen: false, roundSheetClosing: false, roundForm: { slot: '', deadline: '', min: '2' }, roundBusy: false, roundError: '', propForm: null, propError: '', activePerson: null,
-    myEvents: [], leaving: false, anim: ''
+    editingEvent: false, myEvents: [], leaving: false, anim: ''
   };
 }
 export function respondFor(ev, mode, myName) {
