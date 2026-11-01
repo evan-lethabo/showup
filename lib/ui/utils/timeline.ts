@@ -43,6 +43,33 @@ export function nearestEndpoint(rs: readonly Range[], hit: number): Endpoint {
   return { idx: best, edge: bestEnd ? 'e' : 's' };
 }
 
+/**
+ * The range a press lands in the middle of, or -1. The edges (up to 30 min, at most a quarter of the range) still resize,
+ * so a drag from there moves that end; only the middle of a range carries it along.
+ */
+export function middleRange(rs: readonly Range[], minute: number): number {
+  return rs.findIndex((r) => {
+    const edge = Math.min(SNAP_MIN, (r.e - r.s) / 4);
+    return minute > r.s + edge && minute < r.e - edge;
+  });
+}
+
+/**
+ * Slide one range by `delta` minutes (snapped to half hours), keeping its length. It stops at the window ends and
+ * at its neighbours, leaving them a half hour of gap so ranges never merge mid-drag.
+ */
+export function shiftRange(rs: readonly Range[], idx: number, delta: number, win: Range): Range[] {
+  const out = rs.map((r) => ({ s: r.s, e: r.e }));
+  const r = out[idx];
+  if (!r) return out;
+  const prev = out[idx - 1]; const next = out[idx + 1];
+  const lo = prev ? prev.e + SNAP_MIN : win.s;
+  const hi = next ? next.s - SNAP_MIN : win.e;
+  const d = Math.max(lo - r.s, Math.min(hi - r.e, Math.round(delta / SNAP_MIN) * SNAP_MIN));
+  r.s += d; r.e += d;
+  return out;
+}
+
 /** Move one endpoint to `hit`, then keep every range at least an hour long and inside the window. */
 export function moveEndpoint(rs: readonly Range[], target: Endpoint, hit: number, win: Range): Range[] {
   const out = rs.map((r) => ({ s: r.s, e: r.e }));
