@@ -1,7 +1,7 @@
 // Propose a time, collect I'm in / Can't make it, then confirm. Server-only.
 // While a proposal is open, every viewer gets the same body (plus the caller's own vote); nothing says who voted what.
 // Closing re-checks each "in" voter's stored conditions against the "in" group only (PRODUCT-RULES §5), using the engine.
-import { slotStats, SLOT_STEP } from '../engine';
+import { slotStats, SLOT_STEP, START_COVER } from '../engine';
 import type { Db } from './db';
 import { pgCode } from './db';
 import { newId } from './credentials';
@@ -63,7 +63,8 @@ const pastDeadline = (p: ProposalRow, event: PublicEvent, now: Date) => p.deadli
 
 // ---- Create -----------------------------------------------------------------------------------------------------
 
-export interface CreateInput { date: unknown; startMin: unknown; endMin: unknown; deadline?: unknown; minAttendees: unknown }
+/** The proposal is a start time; the end is derived from the event's length (one slot step when there is none). */
+export interface CreateInput { date: unknown; startMin: unknown; deadline?: unknown; minAttendees: unknown }
 export type CreateResult =
   | { status: 'ok' }
   | { status: 'invalid'; field: string; message: string }
@@ -76,8 +77,11 @@ export async function createProposal(db: Db, event: PublicEvent, input: CreateIn
   const bad = (field: string, message: string): CreateResult => ({ status: 'invalid', field, message });
   const day = event.days.find((d) => d.date === input.date);
   if (!day) return bad('date', "That isn't one of this event's days.");
-  const { startMin, endMin } = input;
-  if (!isInt(startMin) || !isInt(endMin) || endMin - startMin !== event.durationMin || startMin < day.start || endMin > day.end || (startMin - day.start) % SLOT_STEP !== 0) {
+  const { startMin } = input;
+  // Same rule as the engine: a fixed length must fit in the day's window; with none, the start just needs room to begin.
+  const endMin = isInt(startMin) ? startMin + (event.durationMin ?? SLOT_STEP) : 0;
+  const fitsBy = isInt(startMin) ? startMin + (event.durationMin ?? START_COVER) : 0;
+  if (!isInt(startMin) || startMin < day.start || fitsBy > day.end || (startMin - day.start) % SLOT_STEP !== 0) {
     return bad('startMin', "That time doesn't fit this event.");
   }
   if (!isInt(input.minAttendees) || input.minAttendees < 2 || input.minAttendees > MAX_MIN_ATTENDEES) return bad('minAttendees', 'Choose a minimum of at least 2 people.');
@@ -114,7 +118,7 @@ export async function resolveProposal(db: Db, event: PublicEvent, p: ProposalRow
   const voters = await db.query<{ participant_id: string }>(`SELECT participant_id FROM proposal_votes WHERE proposal_id = $1 AND vote = 'in'`, [p.id]);
   const inIds = new Set(voters.map((v) => v.participant_id));
   const responses = (await loadEngineResponses(db, event.id)).filter((r) => inIds.has(r.id));
-  const stats = slotStats(slotIdFor(p.date), responses, { s: p.startMin, e: p.endMin }, { duration: p.endMin - p.startMin });
+  const stats = slotStats(slotIdFor(p.date), responses, { s: p.startMin, e: p.endMin }, { duration: event.durationMin });
   const going = stats.group;
   const total = going.length + ORGANISER_COUNTS;
   await db.query(

@@ -15,7 +15,8 @@ export interface CreateEventInput {
   title: string;
   organiserName: string;
   timezone: string;
-  durationMin: number;
+  /** Minutes, or null when the organiser set no fixed length. */
+  durationMin: number | null;
   /** Sorted by date; the index is the day's creation position. */
   days: EventDayInput[];
 }
@@ -106,8 +107,11 @@ export function validateCreateEvent(body: unknown, now: Date = new Date(), edit?
     if (!timezone) return fail('timezone', 'The event needs a valid timezone.');
   }
 
-  let durationMin = DEFAULT_DURATION;
-  if (body.durationMin !== undefined && body.durationMin !== null) {
+  // A missing key keeps the old default for older callers; an explicit null means no fixed length.
+  let durationMin: number | null = DEFAULT_DURATION;
+  if (body.durationMin === null) {
+    durationMin = null;
+  } else if (body.durationMin !== undefined) {
     const d = body.durationMin;
     if (typeof d !== 'number' || !Number.isInteger(d) || d < MIN_DURATION || d > DAY) {
       return fail('durationMin', `The event length must be between ${MIN_DURATION} minutes and 24 hours.`);
@@ -141,7 +145,7 @@ export function validateCreateEvent(body: unknown, now: Date = new Date(), edit?
     if (end === start) return fail(`${field}.end`, "A day's window can't start and end at the same time.");
     const e = end < start ? end + DAY : end;
     if (e - start > DAY) return fail(`${field}.end`, "A day's window can't be longer than 24 hours.");
-    if (e - start < durationMin) {
+    if (durationMin !== null && e - start < durationMin) {
       return fail(`${field}.end`, `Each day's window needs to be at least ${hoursText(durationMin)}, the length of the event.`);
     }
     days.push({ date, start, end: e });

@@ -10,7 +10,8 @@ export interface PublicEvent {
   id: string;
   title: string;
   organiserName: string;
-  durationMin: number;
+  /** Minutes, or null when the organiser set no fixed length. */
+  durationMin: number | null;
   timezone: string;
   /** In creation order (which is date order). */
   days: PublicEventDay[];
@@ -50,7 +51,7 @@ export async function createEvent(db: Db, input: CreateEventInput): Promise<{ id
 }
 
 /** Whether two events offer guests different choices: the days, any day's window, or the event length. */
-function sameSchedule(a: { durationMin: number; days: PublicEventDay[] }, b: { durationMin: number; days: PublicEventDay[] }): boolean {
+function sameSchedule(a: { durationMin: number | null; days: PublicEventDay[] }, b: { durationMin: number | null; days: PublicEventDay[] }): boolean {
   return a.durationMin === b.durationMin && a.days.length === b.days.length &&
     a.days.every((d, i) => d.date === b.days[i]!.date && d.start === b.days[i]!.start && d.end === b.days[i]!.end);
 }
@@ -100,7 +101,7 @@ interface EventRow {
   id: string;
   title: string;
   organiser_name: string;
-  duration_min: number;
+  duration_min: number | null;
   timezone: string;
   organiser_token_hash: string;
   days: PublicEventDay[] | string;
@@ -120,7 +121,7 @@ async function loadEvent(db: Db, id: string): Promise<{ event: PublicEvent; toke
       id: r.id,
       title: r.title,
       organiserName: r.organiser_name,
-      durationMin: Number(r.duration_min),
+      durationMin: r.duration_min === null ? null : Number(r.duration_min),
       timezone: r.timezone,
       days: days.map((d) => ({ date: d.date, start: Number(d.start), end: Number(d.end) })),
       participants: people.map((p) => ({ name: p.name, responded: p.responded === true })),

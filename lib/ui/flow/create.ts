@@ -7,6 +7,7 @@ import { isoFromDate, todayIso } from '../utils/dates';
 import { untilFromWheel, wheelMinute } from '../utils/wheel-time';
 import { saveOrganiserEvent } from '../services/organiser-events';
 import { updateStoredEvent } from '../services/event-api';
+var DURATIONS = [{ value: '', label: 'No fixed length' }, { value: '30', label: '30 min' }, { value: '60', label: '1 hr' }, { value: '90', label: '1.5 hr' }, { value: '120', label: '2 hr' }, { value: '180', label: '3 hr' }, { value: '240', label: '4 hr' }, { value: '360', label: '6 hr' }, { value: '480', label: '8 hr' }];
 /* Create screen: calendar, time window, name */
 export class CreateMixin {
   toggleDay(iso) {
@@ -30,7 +31,7 @@ export class CreateMixin {
     if (!ev || !ev.persisted || this.state.mode !== 'organiser' || !this.organiserToken()) return;
     var first = ev.slots[0];
     this.go({
-      screen: 'create', editingEvent: true, name: ev.name, nameError: '', orgName: ev.organiser, createError: '', creating: false,
+      screen: 'create', editingEvent: true, name: ev.name, nameError: '', orgName: ev.organiser, duration: ev.duration || null, createError: '', creating: false,
       pickDays: ev.slots.map(function (x) { return x.iso; }), from: first ? first.win.s : 1020, until: first ? first.win.e : 1440,
       calMonth: first ? first.iso.slice(0, 7) : todayIso().slice(0, 7), moreOpen: false
     });
@@ -46,7 +47,7 @@ export class CreateMixin {
     if (!n) { this.setState({ nameError: 'Give your event a name.' }); return; }
     var token = this.organiserToken();
     if (s.pickDays.length < 1 || !org || s.creating || !token) return;
-    var body = { title: n, organiserName: org, durationMin: ev.duration, days: s.pickDays.slice().sort().map(function (iso) { return { date: iso, start: s.from, end: s.until }; }) };
+    var body = { title: n, organiserName: org, durationMin: s.duration || null, days: s.pickDays.slice().sort().map(function (iso) { return { date: iso, start: s.from, end: s.until }; }) };
     this.setState({ creating: true, createError: '', nameError: '' });
     updateStoredEvent(ev.id, token, body).then(function (r) {
       if (r.ok) {
@@ -70,7 +71,7 @@ export class CreateMixin {
     if (s.pickDays.length < 2 || !org || s.creating) return;
     var tz = 'UTC';
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) {}
-    var body = { title: n, organiserName: org, timezone: tz, days: s.pickDays.slice().sort().map(function (iso) { return { date: iso, start: s.from, end: s.until }; }) };
+    var body = { title: n, organiserName: org, timezone: tz, durationMin: s.duration || null, days: s.pickDays.slice().sort().map(function (iso) { return { date: iso, start: s.from, end: s.until }; }) };
     this.setState({ creating: true, createError: '', nameError: '' });
     var fallback = "We couldn't create your event. Try again in a moment.";
     fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -132,7 +133,7 @@ export class CreateMixin {
     var createHint = nDays < minDays ? (editing ? 'Pick at least one day.' : 'Pick at least two days.') : (!orgOk ? 'Add your name.' : '');
     var evNow = s.event; var changed = false;
     if (editing && evNow && evNow.slots) {
-      changed = evNow.slots.length !== nDays || evNow.slots.some(function (x) { return s.pickDays.indexOf(x.iso) < 0 || x.win.s !== s.from || x.win.e !== s.until; });
+      changed = (evNow.duration || null) !== (s.duration || null) || evNow.slots.length !== nDays || evNow.slots.some(function (x) { return s.pickDays.indexOf(x.iso) < 0 || x.win.s !== s.from || x.win.e !== s.until; });
     }
     var hasResponders = !!(editing && evNow && (evNow.participants || []).some(function (p) { return p.responded; }));
     return {
@@ -141,6 +142,9 @@ export class CreateMixin {
       calPrevLabel: calPrevLabel, calNextLabel: calNextLabel, calPrevAria: calPrevAria, calNextAria: calNextAria,
       calPrev: function () { self.shiftMonth(-1); }, calNext: function () { self.shiftMonth(1); },
       createWheels: createWheels, windowLen: windowLen,
+      durationValue: s.duration ? String(s.duration) : '',
+      durationOptions: DURATIONS,
+      setDuration: function (e) { var v = e.target.value; self.setState({ duration: v ? Number(v) : null, createError: '' }); },
       orgName: s.orgName, setOrgName: function (e) { self.setState({ orgName: e.target.value }); },
       moreOpen: s.moreOpen, moreExpanded: s.moreOpen ? 'true' : 'false',
       toggleMore: function () { self.setState({ moreOpen: !self.state.moreOpen }); },

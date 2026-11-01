@@ -60,8 +60,8 @@ export interface EventData {
   slots: Slot[];
   win: Window;
   responses: Response[];
-  /** Event length in minutes (default 120). */
-  duration?: number;
+  /** Event length in minutes (default 120). `null` = no fixed length: people count if free at the start time. */
+  duration?: number | null;
 }
 
 /** Stable participant id, used in conditions and engine output. */

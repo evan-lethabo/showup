@@ -1,9 +1,10 @@
 // Database schema (version 1) and a non-destructive setup that refuses to run over incompatible tables.
+// Version 2: events.duration_min may be NULL (no fixed event length).
 // Times are linear minutes from the day's midnight; values above 1440 are after midnight.
 // Conditions are stored only once confirmed; there is deliberately no column for raw condition text.
 import type { Db, Statement } from './db';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 const LOCK_KEY = 74_201_801;
 
 const ID = `'^[A-Za-z0-9_-]{16}$'`;
@@ -23,7 +24,7 @@ const TABLES: Record<string, string> = {
     id text NOT NULL,
     title text NOT NULL,
     organiser_name text NOT NULL,
-    duration_min integer NOT NULL DEFAULT 120,
+    duration_min integer,
     timezone text NOT NULL,
     organiser_token_hash text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -31,7 +32,7 @@ const TABLES: Record<string, string> = {
     CONSTRAINT events_id_format CHECK (id ~ ${ID}),
     CONSTRAINT events_title_length CHECK (char_length(title) BETWEEN 1 AND 60),
     CONSTRAINT events_organiser_name_length CHECK (char_length(organiser_name) BETWEEN 1 AND 30),
-    CONSTRAINT events_duration_range CHECK (duration_min BETWEEN 15 AND 1440),
+    CONSTRAINT events_duration_range CHECK (duration_min IS NULL OR duration_min BETWEEN 15 AND 1440),
     CONSTRAINT events_timezone_length CHECK (char_length(timezone) BETWEEN 1 AND 64),
     CONSTRAINT events_token_hash_format CHECK (organiser_token_hash ~ ${HASH})
   )`,
@@ -173,7 +174,7 @@ const EXPECTED: Record<string, { columns: Record<string, Col>; constraints: stri
   },
   events: {
     columns: {
-      id: ['text', false], title: ['text', false], organiser_name: ['text', false], duration_min: ['integer', false],
+      id: ['text', false], title: ['text', false], organiser_name: ['text', false], duration_min: ['integer', true],
       timezone: ['text', false], organiser_token_hash: ['text', false], created_at: ['timestamp with time zone', false],
     },
     constraints: ['events_pkey', 'events_id_format', 'events_title_length', 'events_organiser_name_length',
@@ -298,6 +299,22 @@ export async function schemaProblems(db: Db, requireAll: boolean): Promise<strin
   return problems;
 }
 
+const DURATION_V2 = `events_duration_range CHECK (duration_min IS NULL OR duration_min BETWEEN 15 AND 1440)`;
+
+/** Version 2 made the event length optional. An existing version-1 events table is relaxed in place; nothing else changes. */
+async function upgradeDurationColumn(db: Db): Promise<void> {
+  const [col] = await db.query<{ is_nullable: string }>(
+    `SELECT is_nullable FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'events' AND column_name = 'duration_min'`,
+  );
+  if (!col || col.is_nullable === 'YES') return;
+  await db.transaction([
+    { text: 'SELECT pg_advisory_xact_lock($1::bigint)', params: [LOCK_KEY] },
+    { text: 'ALTER TABLE events ALTER COLUMN duration_min DROP NOT NULL', params: [] },
+    { text: 'ALTER TABLE events DROP CONSTRAINT IF EXISTS events_duration_range', params: [] },
+    { text: `ALTER TABLE events ADD CONSTRAINT ${DURATION_V2}`, params: [] },
+  ]);
+}
+
 function setupStatements(): Statement[] {
   return [
     { text: 'SELECT pg_advisory_xact_lock($1::bigint)', params: [LOCK_KEY] },
@@ -313,6 +330,7 @@ function setupStatements(): Statement[] {
  * dropped: if an existing table doesn't match, nothing is changed and SchemaDriftError lists the differences.
  */
 export async function setupSchema(db: Db): Promise<{ created: string[]; version: number }> {
+  await upgradeDurationColumn(db);
   const before = await schemaProblems(db, false);
   if (before.length) throw new SchemaDriftError(before, false);
   const had = await existingTables(db);

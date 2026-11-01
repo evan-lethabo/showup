@@ -51,6 +51,13 @@ describe('event creation validation', () => {
     for (const d of [0, -30, 14, 1441, 90.5, '120']) expect(errorOf({ ...base, durationMin: d }).field).toBe('durationMin');
   });
 
+  it('treats an explicit null as no fixed length, with no window-length minimum', () => {
+    const short = { date: '2030-01-05', start: 1200, end: 1230 };
+    const v = valueOf({ ...base, durationMin: null, days: [short] });
+    expect(v.durationMin).toBeNull();
+    expect(v.days).toEqual([short]);
+  });
+
   it("rejects a window shorter than the event, naming the day's end field", () => {
     expect(errorOf({ ...base, days: [{ date: '2030-01-05', start: 1200, end: 1260 }] })).toEqual({
       field: 'days[0].end',

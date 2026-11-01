@@ -8,11 +8,11 @@
 
 | Term | Meaning |
 |---|---|
-| Event | A plan with candidate days, a time window on each day, a fixed duration and one timezone. |
+| Event | A plan with candidate days, a time window on each day, an optional fixed duration (the organiser may set none) and one timezone. |
 | Organiser | Creates the event; sees respondent names, per-slot counts and the recommendation. Identified by the secret organiser link. |
 | Participant (guest) | Responds through the share link with a name only, no account. Identified by a device token. |
 | Window | The time range on a candidate day during which the event could happen. May cross midnight. |
-| Slot | Day + start time + the event's fixed duration (§2). |
+| Slot | Day + start time (+ the event's duration, when it has one) (§2). The app shows and proposes the start time only. |
 | Availability range | A time range when a participant is available. |
 | Favourite range | A preferred range, inside availability. Used only for ranking (§6). |
 | Willingness | One value per participant per day: **Yes**, **If…** or **No**. |
@@ -40,6 +40,7 @@
 - A participant sets, per candidate day: willingness (Yes / If… / No), availability ranges and optional Favourite ranges.
 - Ranges must sit inside the day's window, have start < end after cross-midnight normalisation, and Favourites must sit inside availability. Validated on the server.
 - **Free for a slot** = willingness for that day is not **No**, **and** one availability range covers the **whole** slot, **and** the slot satisfies every confirmed time condition for that day (§4).
+  - **With no fixed duration** there is no end to cover: a person is free at a start time when a range covers its first 15 minutes, however soon they leave. Any 30-minute start with room to begin inside the window is offered.
   - Example: A available 19–21, B available 21–23, duration 2 h → no slot has both free.
   - One person's touching or overlapping ranges count as one range: 19–20 plus 20–21 covers a 19–21 slot. A real gap (19–20 plus 20:15–21) is never bridged, and different people's ranges never combine.
   - People who said **No** are excluded from the "free" count on purpose: on When2meet they would have left that day blank, so this keeps the When2meet comparison honest.

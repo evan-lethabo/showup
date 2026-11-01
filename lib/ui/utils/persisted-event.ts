@@ -6,7 +6,7 @@ interface StoredEvent {
   id: string;
   title: string;
   organiserName: string;
-  durationMin: number;
+  durationMin: number | null;
   timezone: string;
   days: { date: string; start: number; end: number }[];
   participants?: { name: string; responded: boolean }[];
@@ -17,7 +17,7 @@ export interface EventLinks { guestPath: string; organiserPath?: string }
 interface FlowSlot { id: string; iso: string; day: string; title: string; short: string; win: { s: number; e: number } }
 
 /** Changes whenever the organiser edits the title, name, length or schedule. The results API sends the same string, so open pages can spot an edit. */
-export function eventRev(e: { title: string; organiserName: string; durationMin: number; days: { date: string; start: number; end: number }[] }): string {
+export function eventRev(e: { title: string; organiserName: string; durationMin: number | null; days: { date: string; start: number; end: number }[] }): string {
   return JSON.stringify([e.title, e.organiserName, e.durationMin, e.days.map((d) => [d.date, d.start, d.end])]);
 }
 
@@ -47,12 +47,12 @@ function durationText(minutes: number): string {
   return [h ? `${h} hr` : '', m ? `${m} min` : ''].filter(Boolean).join(' ');
 }
 
-/** "Fri 23 Oct, Sat 24 Oct · 5pm – 12am · 2 hr event", listing each day's window when they differ. */
-export function eventDetails(ev: { slots: FlowSlot[]; duration: number }): string {
+/** "Fri 23 Oct, Sat 24 Oct · 5pm – 12am · 2 hr event", listing each day's window when they differ. No length set, no length label. */
+export function eventDetails(ev: { slots: FlowSlot[]; duration: number | null }): string {
   const windows = ev.slots.map((s) => fmtCompact(s.win.s, s.win.e));
   const same = windows.every((w) => w === windows[0]);
   const days = same
     ? `${ev.slots.map((s) => s.short).join(', ')} · ${windows[0] ?? ''}`
     : ev.slots.map((s, i) => `${s.short} ${windows[i]}`).join(', ');
-  return `${days} · ${durationText(ev.duration)} event`;
+  return ev.duration ? `${days} · ${durationText(ev.duration)} event` : days;
 }

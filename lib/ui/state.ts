@@ -8,7 +8,7 @@ import { loadMyEvents } from './services/storage';
 export function baseState() {
   return {
     screen: 'landing', mode: 'organiser', name: '', nameError: '',
-    orgName: '', pickDays: [], calMonth: todayIso().slice(0, 7), from: 1020, until: 1440, moreOpen: false, note: '',
+    orgName: '', duration: null, pickDays: [], calMonth: todayIso().slice(0, 7), from: 1020, until: 1440, moreOpen: false, note: '',
     event: null, myName: '', editing: false, joinName: '', joinError: '',
     slots: [], win: { s: 1020, e: 1440 },
     avail: {}, ranges: {}, openWheel: {}, will: {}, conds: {}, condText: {}, applied: {},

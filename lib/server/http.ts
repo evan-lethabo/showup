@@ -178,7 +178,7 @@ export async function handleInterpret(eventId: string, req: Request, getDb: () =
     if (!event || !day) return error(400, 'invalid_input', "That day isn't one of this event's days.", 'date');
     const me = auth.participant;
     ctx = {
-      day: { date: day.date, weekday: WEEKDAYS[new Date(`${day.date}T00:00:00Z`).getUTCDay()]!, window_start: hhmm(day.start), window_end: hhmm(day.end), duration_minutes: event.durationMin },
+      day: { date: day.date, weekday: WEEKDAYS[new Date(`${day.date}T00:00:00Z`).getUTCDay()]!, window_start: hhmm(day.start), window_end: hhmm(day.end), duration_minutes: event.durationMin ?? 0 },
       self_name: me.displayName,
       self_id: me.id,
       roster: people.filter((p) => p.id !== me.id).map((p) => ({ id: p.id, name: p.displayName })),
@@ -292,7 +292,7 @@ export async function handleCreateProposal(eventId: string, req: Request, getDb:
     if (access.status === 'not_found') return error(404, 'not_found', "We couldn't find that event.");
     if (access.status === 'forbidden') return error(403, 'forbidden', 'Only the organiser can propose a time.');
     const b = (parsed.body ?? {}) as Record<string, unknown>;
-    const result = await createProposal(db, access.event, { date: b.date, startMin: b.startMin, endMin: b.endMin, deadline: b.deadline, minAttendees: b.minAttendees }, now);
+    const result = await createProposal(db, access.event, { date: b.date, startMin: b.startMin, deadline: b.deadline, minAttendees: b.minAttendees }, now);
     if (result.status === 'invalid') return error(400, 'invalid_input', result.message, result.field);
     if (result.status === 'conflict') return error(409, 'proposal_exists', 'A time is already proposed or confirmed for this event.');
     return json(201, { proposal: await getProposal(db, access.event, { kind: 'organiser' }, now) });

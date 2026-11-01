@@ -79,6 +79,17 @@ export default function Create({ v }: { v: any }) {
                 <p className="window-len" aria-live="polite">{v.windowLen}</p>
               </section>
               <section className="c-sec">
+                <div className="field">
+                  <label className="field-label" htmlFor="c-length">How long is the event?</label>
+                  <select id="c-length" className="select" value={v.durationValue} onChange={v.setDuration}>
+                    {(v.durationOptions || []).map((o: any) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  <p className="small">Optional. With no length, people only need to be free when it starts.</p>
+                </div>
+              </section>
+              <section className="c-sec">
                 <div className="field org-field">
                   <label className="field-label" htmlFor="c-org">Your name</label>
                   <input id="c-org" className="input-line" type="text" maxLength={30} autoComplete="given-name" value={v.orgName} onChange={v.setOrgName} />

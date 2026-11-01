@@ -45,10 +45,49 @@ describe('creating a proposal', () => {
     const other = await newEvent();
     expect((await propose(other.id, g)).status).toBe(403);
     expect((await propose('nope', token)).status).toBe(404);
-    for (const bad of [{ minAttendees: 1 }, { startMin: h(19) + 15 }, { endMin: h(22) }, { date: '2030-01-01' }, { startMin: h(17), endMin: h(19) }, { deadline: '2000-01-01' }, { deadline: '2031-01-01' }]) {
+    for (const bad of [{ minAttendees: 1 }, { startMin: h(19) + 15 }, { startMin: h(22) }, { date: '2030-01-01' }, { startMin: h(17) }, { deadline: '2000-01-01' }, { deadline: '2031-01-01' }]) {
       const o = await newEvent();
       expect((await propose(o.id, o.token, bad)).status, JSON.stringify(bad)).toBe(400);
     }
+  });
+});
+
+describe('no fixed length', () => {
+  const eventWith = (durationMin: number | null) =>
+    createEvent(t.db, { title: 'Drinks', organiserName: 'Org', timezone: 'Australia/Sydney', durationMin, days: [{ date: DAY, start: h(18), end: h(23) }] });
+  async function briefGuest(eventId: string) {
+    const j = await joinEvent(t.db, eventId, 'Amy');
+    if (j.status !== 'ok') throw new Error('join');
+    const a = await authenticateGuest(t.db, eventId, j.credential);
+    if (a.status !== 'ok') throw new Error('auth');
+    await saveResponse(t.db, eventId, a.participant, { days: [{ date: DAY, willingness: 'yes', available: [{ start: h(19), end: h(20) }], favourite: [], conditions: [] }] });
+    return j.credential;
+  }
+
+  it('proposes a start time; someone free at the start counts even though they leave early', async () => {
+    const { id, token } = await eventWith(null);
+    const g = await briefGuest(id);
+    expect((await propose(id, token, { minAttendees: 2 })).status).toBe(201);
+    await vote(id, g, 'in');
+    await close(id, token);
+    const p = await view(id, g);
+    expect(p).toMatchObject({ status: 'confirmed', myStatus: 'going', confirmedCount: 2 });
+  });
+
+  it('with a 2 h length the same guest, free for only one hour, does not make it (original behaviour)', async () => {
+    const { id, token } = await eventWith(120);
+    const g = await briefGuest(id);
+    await propose(id, token, { minAttendees: 2 });
+    await vote(id, g, 'in');
+    await close(id, token);
+    expect(await view(id, g)).toMatchObject({ status: 'failed', myStatus: 'not_going' });
+  });
+
+  it('accepts a start late in the window but not one with no room to begin', async () => {
+    const { id, token } = await eventWith(null);
+    expect((await propose(id, token, { startMin: h(22.5) })).status).toBe(201);
+    const o = await eventWith(null);
+    expect((await propose(o.id, o.token, { startMin: h(23) })).status).toBe(400);
   });
 });
 

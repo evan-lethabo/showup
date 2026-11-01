@@ -5,11 +5,11 @@ export default function ProposeTimeSheet({ v }: { v: any }) {
       <button type="button" className="scrim" tabIndex={-1} aria-label="Close" onClick={v.closeRoundSheet} />
       <div className="sheet glass" role="dialog" aria-modal="true" aria-labelledby="round-title" tabIndex={-1} ref={v.setRoundSheetEl}>
         <div className="sheet-intro">
-          <h2 id="round-title" className="section-h">Propose this time</h2>
-          <p>Everyone who has joined will be asked if they're in. They can't see each other's answers.</p>
+          <h2 id="round-title" className="section-h">Propose a start time</h2>
+          <p>This is when the event starts. Everyone who has joined will be asked if they're in. They can't see each other's answers.</p>
         </div>
         <div className="field">
-          <label className="field-label" htmlFor="r-time">Time</label>
+          <label className="field-label" htmlFor="r-time">Start time</label>
           <select id="r-time" className="select" value={v.roundSlot} onChange={v.setRoundSlot}>
             {(v.roundSlotOptions || []).map((o: any) => (
               <option key={o.value} value={o.value}>{o.label}</option>

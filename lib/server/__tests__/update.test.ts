@@ -56,6 +56,16 @@ describe('edit event (organiser)', () => {
     expect(await revOf()).not.toBe(before);
   });
 
+  it('lets the organiser set or remove the event length; either counts as a schedule change', async () => {
+    const { id, token } = await withGuest();
+    expect(await (await patch(id, { ...base, durationMin: null }, token)).json()).toEqual({ ok: true, scheduleChanged: true });
+    expect((await getPublicEvent(t.db, id))!.durationMin).toBeNull();
+    expect(await responded(id)).toBe(false);
+    expect(await (await patch(id, { ...base, durationMin: null }, token)).json()).toEqual({ ok: true, scheduleChanged: false });
+    expect(await (await patch(id, { ...base, durationMin: 90 }, token)).json()).toEqual({ ok: true, scheduleChanged: true });
+    expect((await getPublicEvent(t.db, id))!.durationMin).toBe(90);
+  });
+
   it('validates like create, but keeps the timezone and lets existing past days stay', async () => {
     const { id, token } = await withGuest();
     expect((await patch(id, { ...base, days: [] }, token)).status).toBe(400);

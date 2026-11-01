@@ -122,10 +122,10 @@ describe('results view', () => {
     expect(c.renderVals()).toMatchObject({ resultsLoading: true, resultsRows: [] });
     await vi.advanceTimersByTimeAsync(0);
     const v = c.renderVals();
-    expect(v.resultsBestLine).toBe('Best time: Sat 7 – 10pm · 6 coming');
+    expect(v.resultsBestLine).toBe('Best time: Sat 7pm · 6 coming');
     expect(v.resultsRows.map((r: any) => [r.label, r.counts, r.isBest])).toEqual([
-      ['Fri 23 Oct · 7 – 10pm', '8 free · 4 coming · 2 maybe', false],
-      ['Sat 24 Oct · 7 – 10pm', '6 free · 6 coming', true],
+      ['Fri 23 Oct · 7pm', '8 free · 4 coming · 2 maybe', false],
+      ['Sat 24 Oct · 7pm', '6 free · 6 coming', true],
     ]);
     expect(v.resultsRows[0].freePct).toBe('100');
     expect(v.resultsRows[0].comingPct).toBe('50');

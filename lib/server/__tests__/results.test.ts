@@ -17,7 +17,7 @@ const h = (x: number) => x * 60;
 type Will = 'yes' | 'if' | 'no';
 type Cond = Record<string, unknown>;
 
-async function newEvent(days = [{ date: FRI, start: h(18), end: h(23) }, { date: SAT, start: h(18), end: h(23) }], durationMin = 180) {
+async function newEvent(days = [{ date: FRI, start: h(18), end: h(23) }, { date: SAT, start: h(18), end: h(23) }], durationMin: number | null = 180) {
   return createEvent(t.db, { title: 'Demo', organiserName: 'Org', timezone: 'Australia/Sydney', durationMin, days });
 }
 async function join(eventId: string, name: string) {
@@ -45,6 +45,18 @@ const dto = async (eventId: string, auth?: string) => (await get(eventId, auth))
 const summary = (r: any) => ({
   days: r.days.map((d: any) => [d.date, d.best?.free ?? 0, d.best?.coming ?? 0]),
   best: r.best?.date ?? null,
+});
+
+describe('events with no fixed length', () => {
+  it('count a guest free at the start time who is gone before a fixed-length event would end', async () => {
+    const days = [{ date: FRI, start: h(18), end: h(23) }];
+    const open = await newEvent(days, null);
+    const fixed = await newEvent(days, 180);
+    for (const { id } of [open, fixed]) await save(id, await join(id, 'Amy'), [{ date: FRI, will: 'yes', s: h(19), e: h(20) }]);
+    const o = await dto(open.id);
+    expect(o.best).toMatchObject({ date: FRI, startMin: h(19), free: 1, coming: 1 });
+    expect((await dto(fixed.id)).best).toBeNull();
+  });
 });
 
 describe('canonical demo through persistence (PRODUCT-RULES §8)', () => {

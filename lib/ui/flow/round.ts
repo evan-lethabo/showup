@@ -2,7 +2,7 @@
 import { castVote, createProposal, fetchProposal } from '../services/event-api';
 import { loadGuestCredential } from '../services/guest-credential';
 import { slotFromIso } from '../utils/dates';
-import { fmtCompact } from '../utils/format';
+import { fmtStart } from '../utils/format';
 import { todayIso } from '../utils/dates';
 /* Propose a time to everyone, collect I'm in / Can't make it, and show the confirmed result (stored events). */
 export class RoundMixin {
@@ -39,7 +39,7 @@ export class RoundMixin {
     var token = this.organiserToken();
     if (!token) { this.setState({ roundError: "We couldn't verify your access on this device." }); return; }
     this.setState({ roundBusy: true, roundError: '' });
-    createProposal(ev.id, token, { date: pick.date, startMin: pick.startMin, endMin: pick.endMin, deadline: f.deadline || undefined, minAttendees: n }).then(function (r) {
+    createProposal(ev.id, token, { date: pick.date, startMin: pick.startMin, deadline: f.deadline || undefined, minAttendees: n }).then(function (r) {
       if (!r.ok) { self.setState({ roundBusy: false, roundError: r.message }); return; }
       self.setState({ round: r.proposal, roundBusy: false, roundSheetClosing: true });
       self.timers.roundClose = setTimeout(function () { self.setState({ roundSheetOpen: false, roundSheetClosing: false }); }, self.reduced() ? 150 : 200);
@@ -77,7 +77,7 @@ export class RoundMixin {
     var on = !!(ev && ev.persisted) && s.screen === 'event';
     var org = on && s.mode === 'organiser'; var guest = on && s.mode === 'guest';
     var best = s.results && ev && s.results.eventId === ev.id ? s.results.best : null;
-    var when = p ? slotFromIso(p.date).title + ', ' + fmtCompact(p.startMin, p.endMin) : '';
+    var when = p ? slotFromIso(p.date).title + ', ' + fmtStart(p.startMin) : '';
     var by = p && p.deadline ? 'Reply by ' + slotFromIso(p.deadline).short : 'No reply-by date';
     var open = on && !!p && p.status === 'open';
     var form = s.roundForm || {};
@@ -88,7 +88,7 @@ export class RoundMixin {
     var nPending = tally.length - nIn - nOut;
     return {
       roundSlotOptions: this.roundSlots(s).map(function (x) {
-        return { value: x.date, label: slotFromIso(x.date).title + ', ' + fmtCompact(x.startMin, x.endMin) + (x.date === bestDate ? ' (best so far)' : '') };
+        return { value: x.date, label: slotFromIso(x.date).title + ', ' + fmtStart(x.startMin) + (x.date === bestDate ? ' (best so far)' : '') };
       }),
       roundSlot: form.slot || bestDate || '',
       setRoundSlot: function (e) { self.setState({ roundForm: Object.assign({}, self.state.roundForm, { slot: e.target.value }), roundError: '' }); },
