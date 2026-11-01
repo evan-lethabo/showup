@@ -8,14 +8,14 @@ import { loadMyEvents } from './services/storage';
 export function baseState() {
   return {
     screen: 'landing', mode: 'organiser', name: '', nameError: '',
-    orgName: '', pickDays: [], calMonth: todayIso().slice(0, 7), from: 1020, until: 1440, moreOpen: false, note: '',
+    orgName: '', duration: null, pickDays: [], calMonth: todayIso().slice(0, 7), from: 1020, until: 1440, moreOpen: false, note: '',
     event: null, myName: '', editing: false, joinName: '', joinError: '',
     slots: [], win: { s: 1020, e: 1440 },
     avail: {}, ranges: {}, openWheel: {}, will: {}, conds: {}, condText: {}, applied: {},
     errors: {}, formError: '', noneWork: false, phase: 'editing', dirty: false,
     sheet: null, sheetClosing: false, liveMsg: '', linkMsg: '', remMsg: '', reminderOpen: false,
     proposeOpen: false, proposeClosing: false, confirmOpen: false, confirmClosing: false, confirmKind: '', confirmTarget: null, confirmBusy: false, confirmError: '', eventGone: false, round: null, roundChanging: false, roundSheetOpen: false, roundSheetClosing: false, roundForm: { slot: '', deadline: '', min: '2' }, roundBusy: false, roundError: '', propForm: null, propError: '', activePerson: null,
-    myEvents: [], leaving: false, anim: ''
+    editingEvent: false, myEvents: [], leaving: false, anim: ''
   };
 }
 export function respondFor(ev, mode, myName) {

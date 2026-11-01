@@ -197,3 +197,33 @@ describe('ranking and representative slots', () => {
     ]);
   });
 });
+
+describe('no fixed length (duration: null)', () => {
+  it('counts a person who is free at the start, however soon they leave', () => {
+    const early = person('Early', { a: { ranges: [{ s: h(19), e: h(20) }] } });
+    const late = person('Late', { a: { ranges: [{ s: h(20), e: h(23) }] } });
+    const ev = event([{ id: 'a' }], [early, late], { duration: null });
+    const at = (s: number) => rankSlots(ev).days[0]!.slots.find((t) => t.s === s)!;
+    expect([at(h(19)).free, at(h(19)).go]).toEqual([1, 1]);
+    expect([at(h(19.5)).free]).toEqual([1]);
+    expect([at(h(20)).free, at(h(20)).go]).toEqual([1, 1]);
+    // With a 2 h length the same early person is not free for any slot (original behaviour).
+    const fixed = event([{ id: 'a' }], [early, late], { duration: 120 });
+    expect(rankSlots(fixed).days[0]!.slots.some((t) => t.s === h(19) && t.free > 0)).toBe(false);
+  });
+
+  it('picks the earliest start among equally good ones and offers starts up to the window end', () => {
+    const ev = event([{ id: 'a' }], [person('Ana', { a: {} }), person('Bo', { a: {} })], { duration: null });
+    const day = rankSlots(ev).days[0]!;
+    expect(day.window?.s).toBe(h(18));
+    expect(day.slots[0]!.s).toBe(h(18));
+    expect(day.slots[day.slots.length - 1]!.s).toBe(h(22.5));
+  });
+
+  it('still honours time conditions: "until 7pm" counts for a 6pm start but not a 7pm one', () => {
+    const cond: Condition = { type: 'time', latest_end: h(19) };
+    const ev = event([{ id: 'a' }], [person('Cy', { a: { will: 'if', conds: [cond] } })], { duration: null });
+    const free = (s: number) => rankSlots(ev).days[0]!.slots.find((t) => t.s === s)!.free;
+    expect([free(h(18)), free(h(18.5)), free(h(19))]).toEqual([1, 1, 0]);
+  });
+});

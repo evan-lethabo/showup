@@ -15,7 +15,8 @@ export interface CreateEventInput {
   title: string;
   organiserName: string;
   timezone: string;
-  durationMin: number;
+  /** Minutes, or null when the organiser set no fixed length. */
+  durationMin: number | null;
   /** Sorted by date; the index is the day's creation position. */
   days: EventDayInput[];
 }
@@ -86,7 +87,10 @@ export function validateName(v: unknown, field = 'name'): Validated<string> {
   return text(v, field, NAME_MAX, 'Add your name to continue.', `Keep your name to ${NAME_MAX} characters.`);
 }
 
-export function validateCreateEvent(body: unknown, now: Date = new Date()): Validated<CreateEventInput> {
+/** Editing an existing event: its timezone is fixed, and days it already has stay valid even once they're past. */
+export interface EditContext { timezone: string; keepDates: ReadonlySet<string> }
+
+export function validateCreateEvent(body: unknown, now: Date = new Date(), edit?: EditContext): Validated<CreateEventInput> {
   if (!isObject(body)) return fail('body', 'Send the event as a JSON object.');
 
   const title = text(body.title, 'title', TITLE_MAX, 'Give your event a name.', `Keep the event name to ${TITLE_MAX} characters.`);
@@ -94,12 +98,20 @@ export function validateCreateEvent(body: unknown, now: Date = new Date()): Vali
   const organiserName = text(body.organiserName, 'organiserName', NAME_MAX, 'Add your name.', `Keep your name to ${NAME_MAX} characters.`);
   if ('error' in organiserName) return organiserName;
 
-  if (typeof body.timezone !== 'string' || body.timezone.length > 64) return fail('timezone', 'The event needs a valid timezone.');
-  const timezone = canonicalTimezone(body.timezone);
-  if (!timezone) return fail('timezone', 'The event needs a valid timezone.');
+  let timezone: string | null;
+  if (edit) {
+    timezone = edit.timezone;
+  } else {
+    if (typeof body.timezone !== 'string' || body.timezone.length > 64) return fail('timezone', 'The event needs a valid timezone.');
+    timezone = canonicalTimezone(body.timezone);
+    if (!timezone) return fail('timezone', 'The event needs a valid timezone.');
+  }
 
-  let durationMin = DEFAULT_DURATION;
-  if (body.durationMin !== undefined && body.durationMin !== null) {
+  // A missing key keeps the old default for older callers; an explicit null means no fixed length.
+  let durationMin: number | null = DEFAULT_DURATION;
+  if (body.durationMin === null) {
+    durationMin = null;
+  } else if (body.durationMin !== undefined) {
     const d = body.durationMin;
     if (typeof d !== 'number' || !Number.isInteger(d) || d < MIN_DURATION || d > DAY) {
       return fail('durationMin', `The event length must be between ${MIN_DURATION} minutes and 24 hours.`);
@@ -122,7 +134,7 @@ export function validateCreateEvent(body: unknown, now: Date = new Date()): Vali
     if (typeof date !== 'string' || !isCalendarDate(date)) return fail(`${field}.date`, 'Each day needs a valid date.');
     if (seen.has(date)) return fail(`${field}.date`, 'Each date can only be picked once.');
     seen.add(date);
-    if (date < today) return fail(`${field}.date`, "Candidate days can't be in the past.");
+    if (date < today && !edit?.keepDates.has(date)) return fail(`${field}.date`, "Candidate days can't be in the past.");
     if (date > last) return fail(`${field}.date`, 'Candidate days must be within the next two years.');
     if (typeof start !== 'number' || !Number.isInteger(start) || start < 0 || start >= DAY) {
       return fail(`${field}.start`, 'Each day needs a valid start time.');
@@ -133,7 +145,7 @@ export function validateCreateEvent(body: unknown, now: Date = new Date()): Vali
     if (end === start) return fail(`${field}.end`, "A day's window can't start and end at the same time.");
     const e = end < start ? end + DAY : end;
     if (e - start > DAY) return fail(`${field}.end`, "A day's window can't be longer than 24 hours.");
-    if (e - start < durationMin) {
+    if (durationMin !== null && e - start < durationMin) {
       return fail(`${field}.end`, `Each day's window needs to be at least ${hoursText(durationMin)}, the length of the event.`);
     }
     days.push({ date, start, end: e });

@@ -3,7 +3,7 @@
 // (the original files shared globals through classic <script> tags). Types come later.
 import { FRESH_LINK } from '../config';
 import { clone } from '../utils/helpers';
-import { fmtCompact } from '../utils/format';
+import { fmtCompact, fmtStart } from '../utils/format';
 import { dateFromIso, isoFromDate, slotFromIso } from '../utils/dates';
 import { fetchResults } from '../services/event-api';
 
@@ -80,6 +80,13 @@ export class EventPageMixin {
         return;
       }
       if (!r.ok || !r.body || r.body.eventId !== eventId) { failed(); return; }
+      // The organiser edited the event: reload so this page shows the new details (and a guest is asked to reply again).
+      var cur = self.state.event;
+      if (typeof r.body.rev === 'string' && cur && cur.rev && r.body.rev !== cur.rev && !self.state.editingEvent) {
+        self.stopResultsPolling();
+        try { window.location.reload(); } catch (e) {}
+        return;
+      }
       if (self.state.resultsError || JSON.stringify(r.body) !== JSON.stringify(self.state.results)) self.setState({ results: r.body, resultsError: false });
       next();
     }, failed);
@@ -98,11 +105,11 @@ export class EventPageMixin {
       var isBest = !!(best && best.date === d.date);
       return {
         key: d.date, isBest: isBest, cls: 'lr-row' + (isBest ? ' is-best' : '') + (b ? '' : ' is-none'),
-        label: info.short + ' · ' + (b ? fmtCompact(b.startMin, b.endMin) : 'No time fits'),
+        label: info.short + ' · ' + (b ? fmtStart(b.startMin) : 'No time fits'),
         counts: b ? b.free + ' free · ' + b.coming + ' coming' + (b.maybe > 0 ? ' · ' + b.maybe + ' maybe' : '') : '',
         hasBar: !!b, freePct: b ? pct(b.free) : '0', comingPct: b ? pct(b.coming) : '0',
         free: b ? b.free : 0, coming: b ? b.coming : 0, maybe: b ? b.maybe : 0, names: b && Array.isArray(b.names) ? b.names : [],
-        day: info.title, time: b ? fmtCompact(b.startMin, b.endMin) : 'No time fits',
+        day: info.title, time: b ? fmtStart(b.startMin) : 'No time fits',
         aria: b ? info.title + ': ' + b.free + ' free, ' + b.coming + ' coming' : info.title + ': no time fits',
       };
     });
@@ -114,9 +121,9 @@ export class EventPageMixin {
       resultsEmpty: !!r && r.respondedCount === 0,
       resultsNoBest: !!r && r.respondedCount > 0 && !best,
       resultsHasBest: !!best,
-      resultsBestLine: best ? 'Best time: ' + slotFromIso(best.date).short.split(' ')[0] + ' ' + fmtCompact(best.startMin, best.endMin) + ' · ' + best.coming + ' coming' : '',
+      resultsBestLine: best ? 'Best time: ' + slotFromIso(best.date).short.split(' ')[0] + ' ' + fmtStart(best.startMin) + ' · ' + best.coming + ' coming' : '',
       resultsBestDay: best ? slotFromIso(best.date).day : '',
-      resultsBestTime: best ? fmtCompact(best.startMin, best.endMin) : '',
+      resultsBestTime: best ? fmtStart(best.startMin) : '',
       resultsBestDate: best ? slotFromIso(best.date).short : '',
       resultsBestCount: best ? best.coming + (best.coming === 1 ? ' person could make this work.' : ' people could make this work.') : '',
       resultsRows: r && r.respondedCount > 0 ? rows : [],

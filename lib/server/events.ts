@@ -10,7 +10,8 @@ export interface PublicEvent {
   id: string;
   title: string;
   organiserName: string;
-  durationMin: number;
+  /** Minutes, or null when the organiser set no fixed length. */
+  durationMin: number | null;
   timezone: string;
   /** In creation order (which is date order). */
   days: PublicEventDay[];
@@ -49,6 +50,42 @@ export async function createEvent(db: Db, input: CreateEventInput): Promise<{ id
   return { id, token };
 }
 
+/** Whether two events offer guests different choices: the days, any day's window, or the event length. */
+function sameSchedule(a: { durationMin: number | null; days: PublicEventDay[] }, b: { durationMin: number | null; days: PublicEventDay[] }): boolean {
+  return a.durationMin === b.durationMin && a.days.length === b.days.length &&
+    a.days.every((d, i) => d.date === b.days[i]!.date && d.start === b.days[i]!.start && d.end === b.days[i]!.end);
+}
+
+/**
+ * Applies an organiser's edit. A new name or title leaves everyone's answers alone. If the days, windows or length change, every
+ * answer (availability, willingness, conditions) and any proposal is cleared, because they no longer describe this schedule;
+ * guests stay joined and simply haven't responded yet. One transaction, so guests never see a half-edited event.
+ */
+export async function updateEvent(db: Db, current: PublicEvent, input: CreateEventInput): Promise<{ scheduleChanged: boolean }> {
+  const scheduleChanged = !sameSchedule(current, input);
+  const statements: Statement[] = [
+    { text: 'UPDATE events SET title = $2, organiser_name = $3, duration_min = $4 WHERE id = $1', params: [current.id, input.title, input.organiserName, input.durationMin] },
+  ];
+  if (scheduleChanged) {
+    const values: string[] = [];
+    const params: unknown[] = [current.id];
+    input.days.forEach((d, i) => {
+      const p = params.length;
+      values.push(`($1, $${p + 1}::date, $${p + 2}, $${p + 3}, $${p + 4})`);
+      params.push(d.date, i, d.start, d.end);
+    });
+    for (const table of ['proposals', 'ranges', 'day_willingness', 'conditions']) {
+      statements.push({ text: `DELETE FROM ${table} WHERE event_id = $1`, params: [current.id] });
+    }
+    statements.push(
+      { text: 'DELETE FROM event_days WHERE event_id = $1', params: [current.id] },
+      { text: `INSERT INTO event_days (event_id, date, position, win_start, win_end) VALUES ${values.join(', ')}`, params },
+    );
+  }
+  await db.transaction(statements);
+  return { scheduleChanged };
+}
+
 const EVENT_SELECT = `
   SELECT e.id, e.title, e.organiser_name, e.duration_min, e.timezone, e.organiser_token_hash,
          coalesce((SELECT json_agg(json_build_object('date', to_char(d.date, 'YYYY-MM-DD'), 'start', d.win_start, 'end', d.win_end)
@@ -64,7 +101,7 @@ interface EventRow {
   id: string;
   title: string;
   organiser_name: string;
-  duration_min: number;
+  duration_min: number | null;
   timezone: string;
   organiser_token_hash: string;
   days: PublicEventDay[] | string;
@@ -84,7 +121,7 @@ async function loadEvent(db: Db, id: string): Promise<{ event: PublicEvent; toke
       id: r.id,
       title: r.title,
       organiserName: r.organiser_name,
-      durationMin: Number(r.duration_min),
+      durationMin: r.duration_min === null ? null : Number(r.duration_min),
       timezone: r.timezone,
       days: days.map((d) => ({ date: d.date, start: Number(d.start), end: Number(d.end) })),
       participants: people.map((p) => ({ name: p.name, responded: p.responded === true })),

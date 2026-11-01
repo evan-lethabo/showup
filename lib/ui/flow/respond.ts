@@ -9,7 +9,7 @@ import { saveOwnResponse, fetchOwnResponse } from '../services/event-api';
 import { editLink, loadGuestCredential } from '../services/guest-credential';
 import { applyOwnResponse, buildResponseBody, condSummary } from '../utils/response-sync';
 import { minuteInWindow, untilFromWheel, wheelMinute } from '../utils/wheel-time';
-import { DRAG_PX, moveEndpoint, nearestEndpoint, pointerMinute, snapMinute } from '../utils/timeline';
+import { DRAG_PX, middleRange, moveEndpoint, nearestEndpoint, pointerMinute, shiftRange, snapMinute } from '../utils/timeline';
 /* Respond screen: days, availability, willingness, submit */
 export class RespondMixin {
   slotById(id) { var l = this.state.slots; for (var i = 0; i < l.length; i++) { if (l[i].id === id) return l[i]; } return null; }
@@ -72,9 +72,13 @@ export class RespondMixin {
     var w = this.state.win; var rs = mergeRanges(this.state.ranges[id] || []);
     return rs.length ? rs : [{ s: w.s, e: w.e }];
   }
-  barMinute(e) {
+  barRawMinute(e) {
     var w = this.state.win; var rect = e.currentTarget.getBoundingClientRect();
-    return snapMinute(pointerMinute(e.clientX, rect.left, rect.width, w), w);
+    return pointerMinute(e.clientX, rect.left, rect.width, w);
+  }
+  barMinute(e) {
+    var w = this.state.win;
+    return snapMinute(this.barRawMinute(e), w);
   }
   tapBar(id, e) {
     if (!e || e.detail === 0) { this.toggleWheels(id, 0); return; }
@@ -88,7 +92,9 @@ export class RespondMixin {
     this.barGesture = null;
     if (!e.isPrimary || e.button !== 0) return;
     var rs = this.barRanges(id);
-    this.barGesture = { id: id, pointerId: e.pointerId, x: e.clientX, y: e.clientY, base: rs, orig: this.state.ranges[id], target: nearestEndpoint(rs, this.barMinute(e)), dragging: false, last: null };
+    // Pressing the middle of a range (not its edges) means a drag carries the whole range, keeping its length.
+    var raw = this.barRawMinute(e); var mid = middleRange(this.state.ranges[id] && this.state.ranges[id].length ? rs : [], raw);
+    this.barGesture = { id: id, pointerId: e.pointerId, x: e.clientX, y: e.clientY, base: rs, orig: this.state.ranges[id], target: nearestEndpoint(rs, this.barMinute(e)), shift: mid >= 0 ? { idx: mid, grab: raw } : null, dragging: false, last: null };
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
   }
   barMove(id, e) {
@@ -99,6 +105,13 @@ export class RespondMixin {
       if (Math.max(dx, dy) < DRAG_PX) return;
       if (dx <= dy) { this.barGesture = 'moved'; return; }
       g.dragging = true; this.setState({ barDrag: id });
+    }
+    if (g.shift) {
+      var step = Math.round((this.barRawMinute(e) - g.shift.grab) / 30);
+      if (step === g.last) return;
+      g.last = step;
+      this.setRanges(id, shiftRange(g.base, g.shift.idx, step * 30, this.state.win));
+      return;
     }
     var hit = this.barMinute(e);
     if (hit === g.last) return;

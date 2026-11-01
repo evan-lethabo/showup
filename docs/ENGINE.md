@@ -35,6 +35,7 @@ Conditions apply only on days answered **If…**, combined with AND; conditions 
 Times are minutes since the day's midnight, end exclusive. Values past 1440 are after midnight, so a 10pm–1am window is 1320–1500 and its slots belong to the day it starts on.
 
 - **Slots** start every 30 minutes from the day's window start and last the event duration. Every slot fits inside the window; a window shorter than the duration has no slots.
+- **No fixed duration** (`duration: null`): there is no end to cover. A slot is a start time, offered every 30 minutes while a `START_COVER` (15 min) fits before the window end, and a person is free when a range covers those first 15 minutes. Everything else below is unchanged.
 - **Free for a slot**: not marked Not free (`avail = 0`), Yes or If… with a condition, and one of their (time-clipped) ranges covers the whole slot. A person's touching or overlapping ranges are merged first (19–20 plus 20–21 covers 19–21). Gaps are never bridged, and different people's ranges never combine.
 - **Viable**: the slot's free people without an unresolvable condition, minus everyone whose group conditions fail, all at once, repeated until nobody is removed.
 - **Tentative** (`tentative`, `tentativeList`): free people with an unresolvable condition whose group conditions hold against the viable group plus themselves. They never satisfy anyone else's conditions.

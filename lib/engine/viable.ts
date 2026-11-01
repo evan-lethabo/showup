@@ -60,8 +60,11 @@ export interface SlotStats extends ViableResult {
 }
 
 export interface SlotOptions {
-  /** Event length in minutes (default 120). */
-  duration?: number;
+  /**
+   * Event length in minutes (default 120). `null` means no fixed length: there is no end to cover, so a person is
+   * free for a slot when their availability covers its start (START_COVER minutes), however long they stay.
+   */
+  duration?: number | null;
   /** Use Favourites when choosing the day's slot (default true). */
   favourites?: boolean;
 }
@@ -69,6 +72,8 @@ export interface SlotOptions {
 export const DEFAULT_DURATION = 120;
 /** Slot starts are this many minutes apart, from the window start. */
 export const SLOT_STEP = 30;
+/** With no fixed length, a person is free at a start time when they cover this many minutes from it (the finest availability step). */
+export const START_COVER = 15;
 
 /** Does group condition `c` hold for a set with these participant ids and this many people? */
 export function conditionHolds(c: GroupCondition, ids: ReadonlySet<ParticipantId>, size: number): boolean {
@@ -176,7 +181,7 @@ function betterPick(a: TimeSlotStats, b: TimeSlotStats, useFav: boolean): boolea
 }
 
 /**
- * Per-day statistics on fixed-duration slots (PRODUCT-RULES §2–§5). Slots start every SLOT_STEP minutes from
+ * Per-day statistics on slots (PRODUCT-RULES §2–§5). Slots start every SLOT_STEP minutes from
  * the window start and must fit inside it. For each slot: free = people whose (time-clipped, merged)
  * availability covers the whole slot; viable = the greatest fixed point of the free people without
  * unresolvable conditions; tentative = free people with an unresolvable condition whose group conditions hold
@@ -188,8 +193,8 @@ export function slotStats(slot: Slot | string, participants: readonly Response[]
   const id = slotIdOf(slot);
   const w = win ?? (typeof slot === 'string' ? undefined : slot.win);
   if (!w) throw new Error(`slotStats: no window for day ${id}`);
-  const duration = opts.duration ?? DEFAULT_DURATION;
-  if (!(duration > 0)) throw new Error(`slotStats: duration must be a positive number of minutes, got ${duration}`);
+  const duration = opts.duration === undefined ? DEFAULT_DURATION : opts.duration;
+  if (duration !== null && !(duration > 0)) throw new Error(`slotStats: duration must be a positive number of minutes, got ${duration}`);
   const useFav = opts.favourites !== false;
 
   const people = participants.map((r) => personFor(r, id)).filter((p): p is Person => p !== null);
@@ -198,9 +203,11 @@ export function slotStats(slot: Slot | string, participants: readonly Response[]
 
   const slots: TimeSlotStats[] = [];
   let pick: TimeSlotStats | null = null;
-  for (let s = w.s; s + duration <= w.e; s += SLOT_STEP) {
-    const e = s + duration;
-    const free = people.filter((p) => covers(p.avail, s, e));
+  // Fixed length: free means covering the whole slot. No length: covering the start is enough, and any start with room for it is offered.
+  const need = duration ?? START_COVER;
+  for (let s = w.s; s + need <= w.e; s += SLOT_STEP) {
+    const e = s + (duration ?? SLOT_STEP);
+    const free = people.filter((p) => covers(p.avail, s, s + need));
     const { viable, rounds } = greatestFixedPoint(free.filter((p) => !p.unresolvable), nameOf);
     const viableIds = new Set(viable.map((p) => p.r.id));
     const tentative = free.filter((p) => {
@@ -212,7 +219,7 @@ export function slotStats(slot: Slot | string, participants: readonly Response[]
       s, e,
       free: free.length, go: viable.length, tentative: tentative.length,
       viable: viable.map((p) => p.r), freeList: free.map((p) => p.r), tentativeList: tentative.map((p) => p.r),
-      favourites: viable.filter((p) => covers(p.favs, s, e)).length,
+      favourites: viable.filter((p) => covers(p.favs, s, s + need)).length,
       group: viable.map((p) => p.r.id), rounds
     };
     slots.push(t);

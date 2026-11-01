@@ -13,7 +13,7 @@ describe('schema setup', () => {
     t = await testDb(false);
     const res = await setupSchema(t.db);
     expect(res.created.sort()).toEqual(['conditions', 'day_willingness', 'event_days', 'events', 'participants', 'proposal_votes', 'proposals', 'ranges', 'schema_migrations']);
-    expect(res.version).toBe(1);
+    expect(res.version).toBe(2);
     expect(await schemaProblems(t.db, true)).toEqual([]);
   }, 15000);
 
@@ -25,6 +25,19 @@ describe('schema setup', () => {
     expect(await t.db.query('SELECT id FROM events')).toEqual([{ id }]);
     expect((await t.db.query('SELECT count(*)::int AS n FROM event_days'))[0]).toEqual({ n: 1 });
     expect((await t.db.query('SELECT count(*)::int AS n FROM schema_migrations'))[0]).toEqual({ n: 1 });
+  });
+
+  it('relaxes a version-1 events table so the event length can be empty, keeping its rows', async () => {
+    t = await testDb();
+    const { id } = await createEvent(t.db, input);
+    await t.pg.exec(`UPDATE events SET duration_min = 120; ALTER TABLE events ALTER COLUMN duration_min SET NOT NULL;
+      ALTER TABLE events DROP CONSTRAINT events_duration_range;
+      ALTER TABLE events ADD CONSTRAINT events_duration_range CHECK (duration_min BETWEEN 15 AND 1440)`);
+    await setupSchema(t.db);
+    expect(await schemaProblems(t.db, true)).toEqual([]);
+    await t.db.query('UPDATE events SET duration_min = NULL WHERE id = $1', [id]);
+    expect(await t.db.query('SELECT duration_min FROM events WHERE id = $1', [id])).toEqual([{ duration_min: null }]);
+    await expect(t.db.query('UPDATE events SET duration_min = 5 WHERE id = $1', [id])).rejects.toMatchObject({ constraint: 'events_duration_range' });
   });
 
   it('refuses to run over an incompatible existing table and changes nothing', async () => {

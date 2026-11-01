@@ -54,7 +54,7 @@ describe('organiser', () => {
     c.submitRound();
     await vi.advanceTimersByTimeAsync(0);
     const post = calls.find((x) => x.init?.method === 'POST' && x.url.endsWith('/proposal'))!;
-    expect(JSON.parse(String(post.init!.body))).toEqual({ date: '2026-10-24', startMin: 1140, endMin: 1320, deadline: '2026-10-23', minAttendees: 3 });
+    expect(JSON.parse(String(post.init!.body))).toEqual({ date: '2026-10-24', startMin: 1140, deadline: '2026-10-23', minAttendees: 3 });
     expect((post.init!.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
     expect(c.renderVals()).toMatchObject({ roundOrgOpen: true, roundCanPropose: false, evStatusLabel: 'Time proposed' });
     c.componentWillUnmount();
@@ -73,7 +73,7 @@ describe('organiser', () => {
     c.submitRound();
     await vi.advanceTimersByTimeAsync(0);
     const post = calls.find((x) => x.init?.method === 'POST' && x.url.endsWith('/proposal'))!;
-    expect(JSON.parse(String(post.init!.body))).toMatchObject({ date: '2026-10-23', startMin: 1080, endMin: 1260 });
+    expect(JSON.parse(String(post.init!.body))).toMatchObject({ date: '2026-10-23', startMin: 1080 });
     c.componentWillUnmount();
   });
 

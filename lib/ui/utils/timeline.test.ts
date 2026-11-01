@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moveEndpoint, nearestEndpoint, pointerMinute, snapMinute } from './timeline';
+import { middleRange, moveEndpoint, nearestEndpoint, pointerMinute, shiftRange, snapMinute } from './timeline';
 
 const evening = { s: 17 * 60, e: 24 * 60 };
 const late = { s: 17 * 60, e: 25 * 60 };
@@ -71,5 +71,38 @@ describe('moving an endpoint', () => {
     const out = moveEndpoint(base, target, h(23), evening);
     expect(out).toEqual([{ s: h(19), e: h(23) }]);
     expect(moveEndpoint(base, target, h(21), evening)).toEqual(base);
+  });
+});
+
+describe('shifting a whole range', () => {
+  const win = { s: h(17), e: h(24) };
+  it('treats only the middle of a range as the grab area; the edges still resize', () => {
+    const rs = [{ s: h(18), e: h(22) }];
+    expect(middleRange(rs, h(20))).toBe(0);
+    expect(middleRange(rs, h(18.6))).toBe(0);
+    expect(middleRange(rs, h(18.4))).toBe(-1);
+    expect(middleRange(rs, h(18.2))).toBe(-1);
+    expect(middleRange(rs, h(21.9))).toBe(-1);
+    expect(middleRange(rs, h(23))).toBe(-1);
+    expect(middleRange([{ s: h(18), e: h(19) }], h(18.5))).toBe(0);
+  });
+
+  it('moves the range in half-hour steps and keeps its length', () => {
+    const rs = [{ s: h(18), e: h(20.5) }];
+    expect(shiftRange(rs, 0, h(1), win)).toEqual([{ s: h(19), e: h(21.5) }]);
+    expect(shiftRange(rs, 0, h(-0.6), win)).toEqual([{ s: h(17.5), e: h(20) }]);
+    expect(shiftRange(rs, 0, 10, win)).toEqual(rs);
+  });
+
+  it('stops at the window ends', () => {
+    const rs = [{ s: h(18), e: h(20) }];
+    expect(shiftRange(rs, 0, h(9), win)).toEqual([{ s: h(22), e: h(24) }]);
+    expect(shiftRange(rs, 0, h(-9), win)).toEqual([{ s: h(17), e: h(19) }]);
+  });
+
+  it('stops short of neighbouring ranges so they never merge', () => {
+    const rs = [{ s: h(17), e: h(18) }, { s: h(19), e: h(20) }, { s: h(22), e: h(23) }];
+    expect(shiftRange(rs, 1, h(5), win)[1]).toEqual({ s: h(20.5), e: h(21.5) });
+    expect(shiftRange(rs, 1, h(-5), win)[1]).toEqual({ s: h(18.5), e: h(19.5) });
   });
 });
