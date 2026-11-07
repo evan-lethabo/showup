@@ -9,8 +9,9 @@ import { spawn } from 'node:child_process';
 
 const STARTS = ['create', 'respond', 'fresh', 'join', 'guest', 'participant'];
 const ROUTES = ['/', '/example', ...STARTS.map((s) => '/preview/' + s)];
-// Google Fonts is optional (the app falls back to the bundled Manrope), so being offline is not a failure.
-const IGNORE = /fonts\.(googleapis|gstatic)\.com/;
+// Google Fonts is optional (the app falls back to the bundled Manrope), and the Vercel Analytics script only exists on Vercel,
+// so neither being unreachable is a failure.
+const IGNORE = /fonts\.(googleapis|gstatic)\.com|_vercel\/insights/;
 
 let server = null;
 let base = process.env.BASE_URL;

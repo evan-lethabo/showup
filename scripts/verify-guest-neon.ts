@@ -45,7 +45,6 @@ async function main() {
   const ella = await joinEvent(db, eventId, 'Ella');
   if (ella.status !== 'ok') throw new Error('ella join failed');
   const engine = await loadEngineResponses(db, eventId);
-  const finn = engine.find((r) => r.who.includes(tag));
   const people = await db.query<{ id: string; display_name: string; normalised_name: string }>(
     'SELECT id, display_name, normalised_name FROM participants WHERE event_id = $1',
     [eventId],

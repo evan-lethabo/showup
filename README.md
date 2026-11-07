@@ -76,7 +76,7 @@ public/fonts/                Manrope (offline fallback for Google Fonts)
 scripts/                     smoke.mjs, visual-diff.mjs
 docs/                        DESIGN_SYSTEM.md, SCREENS.md, BACKEND_REQUIREMENTS.md, design-references/, archive/
 archive/                     the original prototype (runnable) and handoff files; not part of the app
-MIGRATION_AUDIT.md           how the old code was audited and mapped to this structure
+docs/archive/MIGRATION_AUDIT.md  how the old code was audited and mapped to this structure
 ```
 
 ## Done vs placeholder
