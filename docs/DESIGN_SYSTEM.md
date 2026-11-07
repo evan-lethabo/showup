@@ -1,6 +1,6 @@
 # SHOWUP — DESIGN_SYSTEM.md
 
-> **Note (18 Oct 2026, Next.js migration):** the live stylesheets are in `styles/`. `styles/main.css` / `styles/event.css` named below are reference copies, now in `archive/design-reference-styles/`. The supplied wheel picker replaced the documented stand-in in the live app; its scoped `twp-*` rules are in `styles/components/wheels.css`. Stand-in wheel details below remain historical design-reference material.
+> **Note (18 Oct 2026, Next.js migration):** the live stylesheets are in `styles/`. `styles/main.css` / `styles/event.css` named below are reference copies, no longer in the repo (recoverable from git history, commit 3c8b456, under `archive/design-reference-styles/`). The supplied wheel picker replaced the documented stand-in in the live app; its scoped `twp-*` rules are in `styles/components/wheels.css`. Stand-in wheel details below remain historical design-reference material.
 
 Document 2 of 4 · Read-only extraction · Source version `1792166501-1cda`
 

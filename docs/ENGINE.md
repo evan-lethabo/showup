@@ -2,7 +2,7 @@
 
 The engine works out who would actually go **together** in each fixed-duration slot of each candidate day, and which slot is best. It is pure strict TypeScript with no dependencies and no I/O. The rules it implements are in `docs/PRODUCT-RULES.md`, which wins over this file.
 
-It is **not** the same as the prototype's `lib/ui/utils/recommend.ts`, which the UI still uses for now. The prototype works out viability per day over everyone free that day, ignoring their times, so six people free at six different hours count as six attendees.
+The server uses it for live results and for confirming proposals (`lib/server/results.ts`, `lib/server/proposals.ts`). It is **not** the same as the prototype's `lib/ui/utils/recommend.ts`, which the UI now uses only for browser-only sample and prototype events. The prototype works out viability per day over everyone free that day, ignoring their times, so six people free at six different hours count as six attendees.
 
 ```ts
 import { viableGroup, slotStats, rankSlots, slotWindow } from '@/lib/engine';
@@ -86,7 +86,7 @@ The elimination trace (`rounds`, with each round's `removed`, `reason` and `fail
 
 ## Tests (`npm run test:engine`)
 
-The command runs a strict typecheck and then Vitest (88 tests, about 5 s):
+The command runs a strict typecheck and then Vitest (91 tests):
 
 - **Conditions** (`conditions.test.ts`): every engine case in PRODUCT-RULES §9, plus `requires_any` cascades and mutual dependencies, ids independent of display names, tentative people excluded from dependencies and thresholds, tentative-only events, the tentative tie-break, ranges emptied by time clipping and cross-midnight time conditions.
 - **A6 values** from BACKEND_REQUIREMENTS, as named tests (`favourites: false`).

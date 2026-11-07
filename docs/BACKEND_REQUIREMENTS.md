@@ -1,17 +1,32 @@
 # SHOWUP: backend requirements
 
+> **Status (November 2026): this is the original gap analysis, kept for the reasoning. Most of it is now built.** The Postgres (Neon) backend is in `lib/server/` and `app/api/`. Where each open question below ended up:
+>
+> | Item                         | Now                                                                                                                                                                     |
+> | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | R1, R2 (algorithm, ranking)  | Decided in `docs/PRODUCT-RULES.md` and implemented in `lib/engine/` (see `docs/ENGINE.md`); the server ranks stored events with it                                      |
+> | R3 (days and windows)        | Per-day windows on a linear minute axis (past 1440 is after midnight), stored in `event_days`                                                                           |
+> | R4 (interpreting conditions) | OpenAI Responses API with strict JSON output and an offline fallback parser (`lib/conditions/`, `lib/server/openai.ts`). The guest confirms the read-back before saving |
+> | R5 (private conditions)      | Enforced on the server: only the author can read their conditions; results return counts and names only                                                                 |
+> | R6 (proposals, deadlines)    | Propose, vote, close and withdraw (`lib/server/proposals.ts`)                                                                                                           |
+> | R7 (persistence)             | Neon Postgres; schema in `lib/server/schema.ts`, created by `npm run db:setup`; events can be edited, cancelled, and guests can leave                                   |
+> | R8 (identity and links)      | No accounts: an organiser token in the private link and a per-guest credential, only hashes stored (`lib/server/credentials.ts`)                                        |
+> | R9                           | Open items such as `event.note` and browser testing were not re-checked                                                                                                 |
+>
+> The sections below are unchanged and describe the state of the app before the backend existed ("Current state" columns are historical).
+
 > Extracted on 18 Oct 2026 from `docs/archive/BUILD_STAGES.md` (§3 Integration readiness, §4 Missing requirements, and the expected values from stage A6), with the text unchanged. Code paths in the original text refer to the old single-file source. They now map as follows:
 >
-> | Original reference                                                                            | Now                                                                                                                                                              |
-> | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-> | `Main.dc.html` recommendation functions                                                       | The UI's characterised policy remains in `lib/ui/utils/recommend.ts`; a tested replacement exists in `lib/engine/` but is not wired in pending ranking decisions |
-> | `parseConditions`, `STOPWORDS`, `NUMWORDS`                                                    | `lib/ui/utils/conditions-parser.ts`, `lib/ui/data/constants.ts`                                                                                                  |
-> | `store`, `loadMyEvents`, `recordMyEvent`, `saveEventData`, `loadEventData` (the storage seam) | `lib/ui/services/storage.ts` (future: `lib/supabase/`)                                                                                                           |
-> | `dotRowsFrom`                                                                                 | `lib/ui/utils/dot-rows.ts`                                                                                                                                       |
-> | Fixtures `ORG_RESP`, `GUEST_RESP`, `SAMPLE_SLOTS`, `SAMPLE_WINDOW`                            | `lib/ui/data/fixtures.ts`                                                                                                                                        |
-> | `TODAY`, `FRESH_LINK`                                                                         | `lib/ui/config.ts`                                                                                                                                               |
-> | `SCREENS.md`, `DESIGN_SYSTEM.md`                                                              | `docs/`                                                                                                                                                          |
-> | `SOURCE_MANIFEST.md`                                                                          | `docs/archive/`                                                                                                                                                  |
+> | Original reference                                                                            | Now                                                                                                                                                                     |
+> | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | `Main.dc.html` recommendation functions                                                       | `lib/ui/utils/recommend.ts` is kept for browser-only sample and prototype events. Stored events are ranked on the server by `lib/engine/` (see `lib/server/results.ts`) |
+> | `parseConditions`, `STOPWORDS`, `NUMWORDS`                                                    | `lib/ui/utils/conditions-parser.ts`, `lib/ui/data/constants.ts`                                                                                                         |
+> | `store`, `loadMyEvents`, `recordMyEvent`, `saveEventData`, `loadEventData` (the storage seam) | `lib/ui/services/storage.ts` (browser-only events); stored events go through `lib/ui/services/event-api.ts` and `lib/server/`                                           |
+> | `dotRowsFrom`                                                                                 | `lib/ui/utils/dot-rows.ts`                                                                                                                                              |
+> | Fixtures `ORG_RESP`, `GUEST_RESP`, `SAMPLE_SLOTS`, `SAMPLE_WINDOW`                            | `lib/ui/data/fixtures.ts`                                                                                                                                               |
+> | `TODAY`, `FRESH_LINK`                                                                         | `lib/ui/config.ts`                                                                                                                                                      |
+> | `SCREENS.md`, `DESIGN_SYSTEM.md`                                                              | `docs/`                                                                                                                                                                 |
+> | `SOURCE_MANIFEST.md`                                                                          | `docs/archive/`                                                                                                                                                         |
 >
 > Entry points for real data already exist: the flow root (`components/flow/FlowClient.tsx`) accepts `startAt`, `event` and `initialState` props, so a future `/e/[eventId]` route can load an event and render `<FlowClient startAt="join" event={ev} />`.
 
