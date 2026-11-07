@@ -1,10 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef } from 'react';
-import {
-  createWheelTimePicker,
-  type WheelTimePicker,
-} from '@/lib/ui/time-wheel-picker';
+import { createWheelTimePicker, type WheelTimePicker } from '@/lib/ui/time-wheel-picker';
 
 type WheelDescriptor = {
   key: string;

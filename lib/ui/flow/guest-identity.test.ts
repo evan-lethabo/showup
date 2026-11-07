@@ -7,10 +7,24 @@ const EVT = 'EVTAAAAAAAAAAAA1';
 const OTHER = 'EVTBBBBBBBBBBBB2';
 const SAM = 'PSAMAAAAAAAAAAA1.samsecret';
 const JO = 'PJOAAAAAAAAAAAA2.josecret';
-const stored = { id: EVT, title: 'Dinner', organiserName: 'Alex', durationMin: 120, timezone: 'Australia/Sydney', days: [{ date: '2027-01-08', start: 1080, end: 1380 }], participants: [{ name: 'Sam', responded: true }, { name: 'Jo', responded: true }] };
+const stored = {
+  id: EVT,
+  title: 'Dinner',
+  organiserName: 'Alex',
+  durationMin: 120,
+  timezone: 'Australia/Sydney',
+  days: [{ date: '2027-01-08', start: 1080, end: 1380 }],
+  participants: [
+    { name: 'Sam', responded: true },
+    { name: 'Jo', responded: true },
+  ],
+};
 const own = (id: string, name: string, responded: boolean) => ({
-  participant: { id, name }, responded,
-  days: responded ? [{ date: '2027-01-08', willingness: 'yes', available: [{ start: 1080, end: 1380 }], favourite: [], conditions: [] }] : [],
+  participant: { id, name },
+  responded,
+  days: responded
+    ? [{ date: '2027-01-08', willingness: 'yes', available: [{ start: 1080, end: 1380 }], favourite: [], conditions: [] }]
+    : [],
 });
 
 let store: Map<string, string>;
@@ -28,23 +42,54 @@ function respondWith(byCred: Record<string, { status: number; body?: unknown }>)
 
 function mount(ev = stored) {
   const c: any = new Component({ startAt: 'join', event: toFlowEvent(ev, { guestPath: '/e/' + ev.id }), initialState: { screen: 'join' } });
-  c.__host = { __setLogicState(patch: object, cb?: () => void) { c.state = { ...c.state, ...patch }; if (cb) cb(); } };
+  c.__host = {
+    __setLogicState(patch: object, cb?: () => void) {
+      c.state = { ...c.state, ...patch };
+      if (cb) cb();
+    },
+  };
   c.componentDidMount();
   return c;
 }
-const settle = async () => { for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0)); };
+const settle = async () => {
+  for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
+};
 
 beforeEach(() => {
   store = new Map();
   addr = { pathname: '/e/' + EVT, search: '?utm=x', hash: '' };
   forgetEditFragment();
-  vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) });
-  vi.stubGlobal('location', { get pathname() { return addr.pathname; }, get search() { return addr.search; }, get hash() { return addr.hash; }, origin: 'https://showup.test', host: 'showup.test' });
-  vi.stubGlobal('history', { state: null, replaceState: vi.fn((_s: unknown, _t: string, url: string) => { const [p, q = ''] = url.split('?'); addr = { pathname: p, search: q ? '?' + q : '', hash: '' }; }) });
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => store.set(k, v),
+    removeItem: (k: string) => store.delete(k),
+  });
+  vi.stubGlobal('location', {
+    get pathname() {
+      return addr.pathname;
+    },
+    get search() {
+      return addr.search;
+    },
+    get hash() {
+      return addr.hash;
+    },
+    origin: 'https://showup.test',
+    host: 'showup.test',
+  });
+  vi.stubGlobal('history', {
+    state: null,
+    replaceState: vi.fn((_s: unknown, _t: string, url: string) => {
+      const [p, q = ''] = url.split('?');
+      addr = { pathname: p, search: q ? '?' + q : '', hash: '' };
+    }),
+  });
   vi.stubGlobal('document', {});
   vi.stubGlobal('window', { matchMedia: () => ({ matches: true }) });
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('private edit link', () => {
   it('puts the credential in the fragment only', () => {
@@ -66,7 +111,10 @@ describe('private edit link', () => {
   it('is verified with the Authorization header, then stored and restored, replacing a different stored guest', async () => {
     store.set('showup-guest-' + EVT, JO);
     addr.hash = '#k=' + SAM;
-    respondWith({ [SAM]: { status: 200, body: own('PSAMAAAAAAAAAAA1', 'Sam', true) }, [JO]: { status: 200, body: own('PJOAAAAAAAAAAAA2', 'Jo', true) } });
+    respondWith({
+      [SAM]: { status: 200, body: own('PSAMAAAAAAAAAAA1', 'Sam', true) },
+      [JO]: { status: 200, body: own('PJOAAAAAAAAAAAA2', 'Jo', true) },
+    });
     const c = mount();
     expect(store.get('showup-guest-' + EVT)).toBe(JO); // not stored before verification
     await settle();
@@ -93,7 +141,11 @@ describe('private edit link', () => {
     await settle();
     expect(store.get('showup-guest-' + EVT)).toBe(JO);
     expect(c.state.screen).toBe('join');
-    expect(c.renderVals()).toMatchObject({ hasJoinError: true, joinError: "That edit link isn't valid for this event.", joinDisabled: false });
+    expect(c.renderVals()).toMatchObject({
+      hasJoinError: true,
+      joinError: "That edit link isn't valid for this event.",
+      joinDisabled: false,
+    });
   });
 
   it('is scoped to its event: a link for another event is checked against this event and rejected', async () => {
@@ -143,7 +195,7 @@ describe('switching guest', () => {
     return c;
   }
 
-  it('clears only this event\'s credential and returns to an empty Join, without server calls', async () => {
+  it("clears only this event's credential and returns to an empty Join, without server calls", async () => {
     const c = await respondingAs();
     const calls = fetchMock.mock.calls.length;
     c.renderVals().switchGuest();
@@ -173,7 +225,15 @@ describe('switching guest', () => {
   it('then joins under a different available name', async () => {
     const c = await respondingAs();
     c.renderVals().switchGuest();
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ participantId: 'PNEWAAAAAAAAAAA3', name: 'Kim', credential: 'PNEWAAAAAAAAAAA3.kimsecret' }), { status: 201 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ participantId: 'PNEWAAAAAAAAAAA3', name: 'Kim', credential: 'PNEWAAAAAAAAAAA3.kimsecret' }), {
+            status: 201,
+          }),
+      ),
+    );
     c.setState({ joinName: 'Kim' });
     c.joinContinue();
     await settle();

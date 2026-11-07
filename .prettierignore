@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+archive
+docs/archive
+docs/design-references
+public
+package-lock.json
+tsconfig.tsbuildinfo
+next-env.d.ts
+.visual

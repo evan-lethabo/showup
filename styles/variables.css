@@ -1,1 +1,29 @@
-:root{--red:#F01015;--red-button:#E00E13;--background:#FFFBFA;--text-primary:#333333;--text-secondary:#888888;--text-muted:#666666;--surface:#FFFFFF;--control-line:#CFC4C2;--row-fill:rgba(51,0,0,0.03);--selected:#F7F1F0;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:48px;--space-8:64px;--space-9:96px;--radius-button:999px;--radius-card:14px;--radius-input:12px;--radius-glass:20px;--ease-out:cubic-bezier(.2,.7,.2,1);--motion-fast:180ms;--motion-medium:260ms;--font-primary:"Manrope",sans-serif}
+:root {
+  --red: #f01015;
+  --red-button: #e00e13;
+  --background: #fffbfa;
+  --text-primary: #333333;
+  --text-secondary: #888888;
+  --text-muted: #666666;
+  --surface: #ffffff;
+  --control-line: #cfc4c2;
+  --row-fill: rgba(51, 0, 0, 0.03);
+  --selected: #f7f1f0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --radius-button: 999px;
+  --radius-card: 14px;
+  --radius-input: 12px;
+  --radius-glass: 20px;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --motion-fast: 180ms;
+  --motion-medium: 260ms;
+  --font-primary: 'Manrope', sans-serif;
+}

@@ -19,7 +19,10 @@ const eventInput = {
   organiserName: 'Alex',
   timezone: 'Australia/Sydney',
   durationMin: 120,
-  days: [{ date: '2030-06-01', start: 1080, end: 1380 }, { date: '2030-06-02', start: 1080, end: 1380 }],
+  days: [
+    { date: '2030-06-01', start: 1080, end: 1380 },
+    { date: '2030-06-02', start: 1080, end: 1380 },
+  ],
 };
 
 let t: TestDb;
@@ -29,7 +32,9 @@ beforeAll(async () => {
   t = await testDb();
   eventId = (await createEvent(t.db, eventInput)).id;
 });
-afterAll(async () => { await t.close(); });
+afterAll(async () => {
+  await t.close();
+});
 
 describe('guest join', () => {
   it('creates a participant and returns a credential once', async () => {
@@ -64,10 +69,15 @@ describe('saving responses', () => {
     if (auth.status !== 'ok') throw new Error('auth');
     const me = auth.participant;
     const body = {
-      days: [{
-        date: '2030-06-01', willingness: 'if', available: [{ start: 1140, end: 1320 }], favourite: [{ start: 1140, end: 1320 }],
-        conditions: [{ type: 'requires', source: 'fallback', people: [{ name: 'Ella' }] }],
-      }],
+      days: [
+        {
+          date: '2030-06-01',
+          willingness: 'if',
+          available: [{ start: 1140, end: 1320 }],
+          favourite: [{ start: 1140, end: 1320 }],
+          conditions: [{ type: 'requires', source: 'fallback', people: [{ name: 'Ella' }] }],
+        },
+      ],
     };
     const saved = await saveResponse(t.db, eventId, me, body);
     expect(saved.status).toBe('ok');
@@ -84,7 +94,13 @@ describe('saving responses', () => {
     const auth = await authenticateGuest(t.db, eventId, j.credential);
     if (auth.status !== 'ok') throw new Error('auth');
     const me = auth.participant;
-    expect((await saveResponse(t.db, eventId, me, { days: [{ date: '2030-06-01', willingness: 'if', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] }] })).status).toBe('invalid');
+    expect(
+      (
+        await saveResponse(t.db, eventId, me, {
+          days: [{ date: '2030-06-01', willingness: 'if', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] }],
+        })
+      ).status,
+    ).toBe('invalid');
   });
 
   it('replaces a previous response without duplicate rows', async () => {
@@ -93,8 +109,12 @@ describe('saving responses', () => {
     const auth = await authenticateGuest(t.db, eventId, j.credential);
     if (auth.status !== 'ok') throw new Error('auth');
     const me = auth.participant;
-    await saveResponse(t.db, eventId, me, { days: [{ date: '2030-06-01', willingness: 'yes', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] }] });
-    await saveResponse(t.db, eventId, me, { days: [{ date: '2030-06-02', willingness: 'no', available: [], favourite: [], conditions: [] }] });
+    await saveResponse(t.db, eventId, me, {
+      days: [{ date: '2030-06-01', willingness: 'yes', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] }],
+    });
+    await saveResponse(t.db, eventId, me, {
+      days: [{ date: '2030-06-02', willingness: 'no', available: [], favourite: [], conditions: [] }],
+    });
     expect(await t.db.query('SELECT count(*)::int AS n FROM day_willingness WHERE participant_id = $1', [me.id])).toEqual([{ n: 1 }]);
     expect(await t.db.query('SELECT count(*)::int AS n FROM ranges WHERE participant_id = $1', [me.id])).toEqual([{ n: 0 }]);
   });
@@ -105,7 +125,9 @@ describe('saving responses', () => {
     const auth = await authenticateGuest(t.db, eventId, j.credential);
     if (auth.status !== 'ok') throw new Error('auth');
     const me = auth.participant;
-    const bad = { days: [{ date: '2030-06-01', willingness: 'yes', available: [{ start: 900, end: 1100 }], favourite: [], conditions: [] }] };
+    const bad = {
+      days: [{ date: '2030-06-01', willingness: 'yes', available: [{ start: 900, end: 1100 }], favourite: [], conditions: [] }],
+    };
     expect((await saveResponse(t.db, eventId, me, bad)).status).toBe('invalid');
   });
 });
@@ -121,14 +143,20 @@ describe('pending names and engine resolution', () => {
   it('feeds the engine stable ids only', async () => {
     const engine = await loadEngineResponses(t.db, eventId);
     expect(engine.every((r) => r.id.length === 16)).toBe(true);
-    const withPending = toEngineResponses(
-      [{ id: 'AAAAAAAAAAAAAAAA', displayName: 'Finn', normalisedName: 'finn' }],
-      {
-        will: [{ participant_id: 'AAAAAAAAAAAAAAAA', date: '2030-06-01', value: 'if' }],
-        ranges: [{ participant_id: 'AAAAAAAAAAAAAAAA', date: '2030-06-01', kind: 'available', start_min: 1140, end_min: 1320 }],
-        conds: [{ participant_id: 'AAAAAAAAAAAAAAAA', date: '2030-06-01', type: 'requires', payload: { type: 'requires', people: [pendingRef('ella')] }, readback: 'x', source: 'fallback' }],
-      },
-    );
+    const withPending = toEngineResponses([{ id: 'AAAAAAAAAAAAAAAA', displayName: 'Finn', normalisedName: 'finn' }], {
+      will: [{ participant_id: 'AAAAAAAAAAAAAAAA', date: '2030-06-01', value: 'if' }],
+      ranges: [{ participant_id: 'AAAAAAAAAAAAAAAA', date: '2030-06-01', kind: 'available', start_min: 1140, end_min: 1320 }],
+      conds: [
+        {
+          participant_id: 'AAAAAAAAAAAAAAAA',
+          date: '2030-06-01',
+          type: 'requires',
+          payload: { type: 'requires', people: [pendingRef('ella')] },
+          readback: 'x',
+          source: 'fallback',
+        },
+      ],
+    });
     expect(withPending[0]!.conds.d20300601![0]).toEqual({ type: 'requires', people: [pendingRef('ella')] });
   });
 });

@@ -43,17 +43,20 @@ export function rankSlots(ev: EventData, opts: RankOptions = {}): Ranking {
   const byDate = ev.slots.every((sl) => !!sl.iso);
   const days: RankedSlot[] = ev.slots.map((slot) => ({
     slot,
-    ...slotStats(slot, ev.responses || [], slot.win ?? ev.win, { duration: ev.duration, favourites: useFav })
+    ...slotStats(slot, ev.responses || [], slot.win ?? ev.win, { duration: ev.duration, favourites: useFav }),
   }));
   let best: RankedSlot | null = null;
   let bestIdx = -1;
   days.forEach((d, i) => {
     if (d.go <= 0) return;
     if (best) {
-      if (d.go !== best.go) { if (d.go < best.go) return; }
-      else if (d.tentative !== best.tentative) { if (d.tentative < best.tentative) return; }
-      else if (useFav && d.favourites !== best.favourites) { if (d.favourites < best.favourites) return; }
-      else if (earlier(d, i, best, bestIdx, byDate) >= 0) return;
+      if (d.go !== best.go) {
+        if (d.go < best.go) return;
+      } else if (d.tentative !== best.tentative) {
+        if (d.tentative < best.tentative) return;
+      } else if (useFav && d.favourites !== best.favourites) {
+        if (d.favourites < best.favourites) return;
+      } else if (earlier(d, i, best, bestIdx, byDate) >= 0) return;
     }
     best = d;
     bestIdx = i;

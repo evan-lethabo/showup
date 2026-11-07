@@ -1,12 +1,64 @@
 /* Segmented control */
-.seg{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:3px;border-radius:var(--radius-button)}
-.seg-thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px) / 3);border-radius:var(--radius-button);pointer-events:none;transition:transform 220ms var(--ease-out),opacity 180ms var(--ease-out)}
-.seg-thumb .t-silver,.seg-thumb .t-red{position:absolute;inset:0;border-radius:inherit;transition:opacity 220ms var(--ease-out)}
-.seg-thumb .t-red{opacity:0}
-.seg-thumb.is-red .t-red{opacity:1}
-.seg-thumb.is-empty{opacity:0}
-.seg-opt{position:relative;z-index:1;min-height:42px;padding:0 4px;border:0;background:none;border-radius:var(--radius-button);font-family:var(--font-primary);font-size:15px;font-weight:400;letter-spacing:-0.01em;color:#333333;cursor:pointer;white-space:nowrap;transition:color 220ms var(--ease-out)}
-.seg-opt.is-on{font-weight:500}
-.seg-opt.is-on-red{color:#FFFFFF;font-weight:500}
-.seg-opt:focus-visible{outline:2px solid #333333;outline-offset:1px}
-
+.seg {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 3px;
+  border-radius: var(--radius-button);
+}
+.seg-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 3);
+  border-radius: var(--radius-button);
+  pointer-events: none;
+  transition:
+    transform 220ms var(--ease-out),
+    opacity 180ms var(--ease-out);
+}
+.seg-thumb .t-silver,
+.seg-thumb .t-red {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transition: opacity 220ms var(--ease-out);
+}
+.seg-thumb .t-red {
+  opacity: 0;
+}
+.seg-thumb.is-red .t-red {
+  opacity: 1;
+}
+.seg-thumb.is-empty {
+  opacity: 0;
+}
+.seg-opt {
+  position: relative;
+  z-index: 1;
+  min-height: 42px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  border-radius: var(--radius-button);
+  font-family: var(--font-primary);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: #333333;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 220ms var(--ease-out);
+}
+.seg-opt.is-on {
+  font-weight: 500;
+}
+.seg-opt.is-on-red {
+  color: #ffffff;
+  font-weight: 500;
+}
+.seg-opt:focus-visible {
+  outline: 2px solid #333333;
+  outline-offset: 1px;
+}

@@ -12,8 +12,7 @@ const HASH = `'^[0-9a-f]{64}$'`;
 const PEOPLE_OK = `CASE WHEN jsonb_typeof(payload->'people') = 'array'
       THEN jsonb_array_length(payload->'people') > 0 AND NOT jsonb_path_exists(payload, '$.people[*] ? (@.type() != "string")')
       ELSE false END`;
-const MINUTES_OK = (key: string) =>
-  `(NOT payload ? '${key}' OR jsonb_typeof(payload->'${key}') = 'number')`;
+const MINUTES_OK = (key: string) => `(NOT payload ? '${key}' OR jsonb_typeof(payload->'${key}') = 'number')`;
 
 const TABLES: Record<string, string> = {
   schema_migrations: `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -174,28 +173,64 @@ const EXPECTED: Record<string, { columns: Record<string, Col>; constraints: stri
   },
   events: {
     columns: {
-      id: ['text', false], title: ['text', false], organiser_name: ['text', false], duration_min: ['integer', true],
-      timezone: ['text', false], organiser_token_hash: ['text', false], created_at: ['timestamp with time zone', false],
+      id: ['text', false],
+      title: ['text', false],
+      organiser_name: ['text', false],
+      duration_min: ['integer', true],
+      timezone: ['text', false],
+      organiser_token_hash: ['text', false],
+      created_at: ['timestamp with time zone', false],
     },
-    constraints: ['events_pkey', 'events_id_format', 'events_title_length', 'events_organiser_name_length',
-      'events_duration_range', 'events_timezone_length', 'events_token_hash_format'],
+    constraints: [
+      'events_pkey',
+      'events_id_format',
+      'events_title_length',
+      'events_organiser_name_length',
+      'events_duration_range',
+      'events_timezone_length',
+      'events_token_hash_format',
+    ],
   },
   event_days: {
-    columns: { event_id: ['text', false], date: ['date', false], position: ['integer', false], win_start: ['integer', false], win_end: ['integer', false] },
+    columns: {
+      event_id: ['text', false],
+      date: ['date', false],
+      position: ['integer', false],
+      win_start: ['integer', false],
+      win_end: ['integer', false],
+    },
     constraints: ['event_days_pkey', 'event_days_event_fk', 'event_days_position_unique', 'event_days_position_range', 'event_days_window'],
   },
   participants: {
     columns: {
-      id: ['text', false], event_id: ['text', false], display_name: ['text', false], normalised_name: ['text', true, 'generated'],
-      token_hash: ['text', false], created_seq: ['bigint', false, 'identity'], created_at: ['timestamp with time zone', false],
+      id: ['text', false],
+      event_id: ['text', false],
+      display_name: ['text', false],
+      normalised_name: ['text', true, 'generated'],
+      token_hash: ['text', false],
+      created_seq: ['bigint', false, 'identity'],
+      created_at: ['timestamp with time zone', false],
     },
-    constraints: ['participants_pkey', 'participants_event_fk', 'participants_id_event_unique', 'participants_name_unique',
-      'participants_created_seq_unique', 'participants_id_format', 'participants_display_name_length', 'participants_token_hash_format'],
+    constraints: [
+      'participants_pkey',
+      'participants_event_fk',
+      'participants_id_event_unique',
+      'participants_name_unique',
+      'participants_created_seq_unique',
+      'participants_id_format',
+      'participants_display_name_length',
+      'participants_token_hash_format',
+    ],
   },
   ranges: {
     columns: {
-      id: ['bigint', false, 'identity'], participant_id: ['text', false], event_id: ['text', false], date: ['date', false],
-      kind: ['text', false], start_min: ['integer', false], end_min: ['integer', false],
+      id: ['bigint', false, 'identity'],
+      participant_id: ['text', false],
+      event_id: ['text', false],
+      date: ['date', false],
+      kind: ['text', false],
+      start_min: ['integer', false],
+      end_min: ['integer', false],
     },
     constraints: ['ranges_pkey', 'ranges_participant_fk', 'ranges_day_fk', 'ranges_kind', 'ranges_minutes'],
   },
@@ -205,25 +240,59 @@ const EXPECTED: Record<string, { columns: Record<string, Col>; constraints: stri
   },
   conditions: {
     columns: {
-      id: ['bigint', false, 'identity'], participant_id: ['text', false], event_id: ['text', false], date: ['date', false],
-      type: ['text', false], payload: ['jsonb', false], readback: ['text', false], source: ['text', false],
+      id: ['bigint', false, 'identity'],
+      participant_id: ['text', false],
+      event_id: ['text', false],
+      date: ['date', false],
+      type: ['text', false],
+      payload: ['jsonb', false],
+      readback: ['text', false],
+      source: ['text', false],
     },
-    constraints: ['conditions_pkey', 'conditions_participant_fk', 'conditions_day_fk', 'conditions_type', 'conditions_payload_type',
-      'conditions_payload_shape', 'conditions_readback_length', 'conditions_source'],
+    constraints: [
+      'conditions_pkey',
+      'conditions_participant_fk',
+      'conditions_day_fk',
+      'conditions_type',
+      'conditions_payload_type',
+      'conditions_payload_shape',
+      'conditions_readback_length',
+      'conditions_source',
+    ],
   },
   proposals: {
     columns: {
-      id: ['text', false], event_id: ['text', false], date: ['date', false], start_min: ['integer', false], end_min: ['integer', false],
-      deadline: ['date', true], min_attendees: ['integer', false], status: ['text', false], confirmed_count: ['integer', true],
-      created_at: ['timestamp with time zone', false], closed_at: ['timestamp with time zone', true],
+      id: ['text', false],
+      event_id: ['text', false],
+      date: ['date', false],
+      start_min: ['integer', false],
+      end_min: ['integer', false],
+      deadline: ['date', true],
+      min_attendees: ['integer', false],
+      status: ['text', false],
+      confirmed_count: ['integer', true],
+      created_at: ['timestamp with time zone', false],
+      closed_at: ['timestamp with time zone', true],
     },
-    constraints: ['proposals_pkey', 'proposals_id_event_unique', 'proposals_event_fk', 'proposals_day_fk', 'proposals_id_format',
-      'proposals_minutes', 'proposals_min_attendees', 'proposals_status'],
+    constraints: [
+      'proposals_pkey',
+      'proposals_id_event_unique',
+      'proposals_event_fk',
+      'proposals_day_fk',
+      'proposals_id_format',
+      'proposals_minutes',
+      'proposals_min_attendees',
+      'proposals_status',
+    ],
   },
   proposal_votes: {
     columns: {
-      proposal_id: ['text', false], participant_id: ['text', false], event_id: ['text', false], vote: ['text', false],
-      voted_at: ['timestamp with time zone', false], confirmed: ['boolean', true],
+      proposal_id: ['text', false],
+      participant_id: ['text', false],
+      event_id: ['text', false],
+      vote: ['text', false],
+      voted_at: ['timestamp with time zone', false],
+      confirmed: ['boolean', true],
     },
     constraints: ['proposal_votes_pkey', 'proposal_votes_proposal_fk', 'proposal_votes_participant_fk', 'proposal_votes_vote'],
   },
@@ -231,7 +300,10 @@ const EXPECTED: Record<string, { columns: Record<string, Col>; constraints: stri
 
 export class SchemaDriftError extends Error {
   /** `changed` is false when the drift was found before setup ran, so nothing was written. */
-  constructor(readonly problems: string[], readonly changed: boolean) {
+  constructor(
+    readonly problems: string[],
+    readonly changed: boolean,
+  ) {
     super(`Database schema is incompatible:\n- ${problems.join('\n- ')}`);
     this.name = 'SchemaDriftError';
   }
@@ -249,7 +321,15 @@ async function existingTables(db: Db): Promise<Set<string>> {
 export async function schemaProblems(db: Db, requireAll: boolean): Promise<string[]> {
   const present = await existingTables(db);
   const names = Object.keys(EXPECTED);
-  const cols = await db.query<{ table_name: string; column_name: string; data_type: string; is_nullable: string; is_generated: string; is_identity: string; column_default: string | null }>(
+  const cols = await db.query<{
+    table_name: string;
+    column_name: string;
+    data_type: string;
+    is_nullable: string;
+    is_generated: string;
+    is_identity: string;
+    column_default: string | null;
+  }>(
     `SELECT table_name, column_name, data_type, is_nullable, is_generated, is_identity, column_default
        FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ANY($1::text[])`,
     [names],
@@ -274,14 +354,23 @@ export async function schemaProblems(db: Db, requireAll: boolean): Promise<strin
     const actual = new Map(cols.filter((c) => c.table_name === table).map((c) => [c.column_name, c]));
     for (const [name, [type, nullable, extra]] of Object.entries(spec.columns)) {
       const c = actual.get(name);
-      if (!c) { problems.push(`${table}.${name} is missing`); continue; }
+      if (!c) {
+        problems.push(`${table}.${name} is missing`);
+        continue;
+      }
       if (c.data_type !== type) problems.push(`${table}.${name} is ${c.data_type}, expected ${type}`);
       if ((c.is_nullable === 'YES') !== nullable) problems.push(`${table}.${name} nullability differs`);
       if ((extra === 'generated') !== (c.is_generated === 'ALWAYS')) problems.push(`${table}.${name} generated column differs`);
       if ((extra === 'identity') !== (c.is_identity === 'YES')) problems.push(`${table}.${name} identity column differs`);
     }
     for (const c of actual.values()) {
-      if (!(c.column_name in spec.columns) && c.is_nullable === 'NO' && c.column_default === null && c.is_identity !== 'YES' && c.is_generated !== 'ALWAYS') {
+      if (
+        !(c.column_name in spec.columns) &&
+        c.is_nullable === 'NO' &&
+        c.column_default === null &&
+        c.is_identity !== 'YES' &&
+        c.is_generated !== 'ALWAYS'
+      ) {
         problems.push(`${table}.${c.column_name} is an unexpected required column`);
       }
     }
@@ -319,7 +408,10 @@ function setupStatements(): Statement[] {
   return [
     { text: 'SELECT pg_advisory_xact_lock($1::bigint)', params: [LOCK_KEY] },
     ...Object.values(TABLES).map((text) => ({ text, params: [] })),
-    ...Object.entries(INDEXES).map(([name, { table, columns }]) => ({ text: `CREATE INDEX IF NOT EXISTS ${name} ON ${table} (${columns})`, params: [] })),
+    ...Object.entries(INDEXES).map(([name, { table, columns }]) => ({
+      text: `CREATE INDEX IF NOT EXISTS ${name} ON ${table} (${columns})`,
+      params: [],
+    })),
     { text: ONE_OPEN_PROPOSAL, params: [] },
     { text: 'INSERT INTO schema_migrations (version) VALUES ($1) ON CONFLICT (version) DO NOTHING', params: [SCHEMA_VERSION] },
   ];

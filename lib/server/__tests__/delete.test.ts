@@ -9,8 +9,12 @@ const base = { title: 'Del', organiserName: 'Org', timezone: 'Australia/Sydney',
 const answer = { days: [{ date: day.date, willingness: 'yes', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] }] };
 
 let t: TestDb;
-beforeAll(async () => { t = await testDb(); });
-afterAll(async () => { await t.close(); });
+beforeAll(async () => {
+  t = await testDb();
+});
+afterAll(async () => {
+  await t.close();
+});
 
 const req = (cred?: string) => new Request('http://x/api', { method: 'DELETE', headers: cred ? { Authorization: `Bearer ${cred}` } : {} });
 const count = async (table: string, eventId: string) =>

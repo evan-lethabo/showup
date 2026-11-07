@@ -4,7 +4,10 @@
  */
 
 /** Minutes since the day's midnight, end exclusive; values past 1440 are after midnight (1500 = 1am). */
-export interface Range { s: number; e: number }
+export interface Range {
+  s: number;
+  e: number;
+}
 
 /** The organiser's time window for every candidate day. */
 export type Window = Range;
@@ -21,15 +24,20 @@ export interface Slot {
 
 /** Depends on who attends: all of `people` (requires), at least one (requires_any), or at least `n` people including self. */
 export type GroupCondition =
-  | { type: 'requires'; people: ParticipantId[] }
-  | { type: 'requires_any'; people: ParticipantId[] }
-  | { type: 'min_attendees'; n: number };
+  { type: 'requires'; people: ParticipantId[] } | { type: 'requires_any'; people: ParticipantId[] } | { type: 'min_attendees'; n: number };
 
 /** Narrows when the participant is free: the slot must start at or after `earliest_start` and end by `latest_end`. */
-export interface TimeCondition { type: 'time'; earliest_start?: number; latest_end?: number }
+export interface TimeCondition {
+  type: 'time';
+  earliest_start?: number;
+  latest_end?: number;
+}
 
 /** Something the engine can't evaluate; makes the participant tentative instead of viable. */
-export interface UnresolvableCondition { type: 'unresolvable'; summary: string }
+export interface UnresolvableCondition {
+  type: 'unresolvable';
+  summary: string;
+}
 
 export type Condition = GroupCondition | TimeCondition | UnresolvableCondition;
 

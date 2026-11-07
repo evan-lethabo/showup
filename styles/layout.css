@@ -1,4 +1,10 @@
 /* Page grid */
-.page-main{padding-top:40px;padding-bottom:var(--space-8)}
-.col-grid{display:grid;grid-template-columns:minmax(0,1fr);row-gap:var(--space-6)}
-
+.page-main {
+  padding-top: 40px;
+  padding-bottom: var(--space-8);
+}
+.col-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: var(--space-6);
+}

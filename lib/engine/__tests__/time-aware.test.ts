@@ -22,21 +22,38 @@ function person(who: string, answers: Record<string, Answer>): Response {
   }
   return r;
 }
-const event = (slots: Slot[], responses: Response[], win: Range = WIN, duration?: number): EventData =>
-  ({ slots, win, responses, ...(duration ? { duration } : {}) });
+const event = (slots: Slot[], responses: Response[], win: Range = WIN, duration?: number): EventData => ({
+  slots,
+  win,
+  responses,
+  ...(duration ? { duration } : {}),
+});
 const needs = (id: string): Condition => ({ type: 'requires', people: [id] });
 const atLeast = (n: number): Condition => ({ type: 'min_attendees', n });
 
 describe('canonical example', () => {
   it('Friday 8 free / 4 viable vs Saturday 6 free / 6 viable: Saturday wins', () => {
     const names = ['Alex', 'Sam', 'Jess', 'Drew', 'Maya', 'Nina', 'Leo', 'Kai'];
-    const responses = names.map((who, i) => person(who, {
-      // Friday: the last four only go if Priya (who never responds) goes.
-      fri: i < 4 ? {} : { will: 'if', conds: [needs('Priya')] },
-      ...(i < 6 ? { sat: {} } : {})
-    }));
-    const r = rankSlots(event([{ id: 'fri', iso: '2026-10-23' }, { id: 'sat', iso: '2026-10-24' }], responses));
-    expect(r.days.map((d) => [d.slot.id, d.free, d.go])).toEqual([['fri', 8, 4], ['sat', 6, 6]]);
+    const responses = names.map((who, i) =>
+      person(who, {
+        // Friday: the last four only go if Priya (who never responds) goes.
+        fri: i < 4 ? {} : { will: 'if', conds: [needs('Priya')] },
+        ...(i < 6 ? { sat: {} } : {}),
+      }),
+    );
+    const r = rankSlots(
+      event(
+        [
+          { id: 'fri', iso: '2026-10-23' },
+          { id: 'sat', iso: '2026-10-24' },
+        ],
+        responses,
+      ),
+    );
+    expect(r.days.map((d) => [d.slot.id, d.free, d.go])).toEqual([
+      ['fri', 8, 4],
+      ['sat', 6, 6],
+    ]);
     expect(r.best?.slot.id).toBe('sat');
   });
 });
@@ -44,16 +61,17 @@ describe('canonical example', () => {
 describe('overlap', () => {
   it('six people free at non-overlapping times are not six simultaneous attendees', () => {
     const six = ['Ana', 'Ben', 'Cleo', 'Dev', 'Eli', 'Fay'];
-    const responses = six.map((who, i) => person(who, {
-      a: { ranges: [{ s: h(17 + i), e: h(18 + i) }] },
-      ...(i < 2 ? { b: { ranges: [{ s: h(19), e: h(21) }] } } : {})
-    }));
+    const responses = six.map((who, i) =>
+      person(who, {
+        a: { ranges: [{ s: h(17 + i), e: h(18 + i) }] },
+        ...(i < 2 ? { b: { ranges: [{ s: h(19), e: h(21) }] } } : {}),
+      }),
+    );
     const ev = event([{ id: 'a' }, { id: 'b' }], responses, WIN, 60);
     expect(old.dayStats(ev, 'a').go).toBe(6); // the day-level count this corrects
     const a = slotStats('a', ev.responses, ev.win, HOUR);
     expect([a.free, a.go]).toEqual([1, 1]);
-    expect(a.slots.filter((t) => t.go > 0).map((t) => [t.s / 60, t.group])).toEqual(
-      six.map((who, i) => [17 + i, [who]]));
+    expect(a.slots.filter((t) => t.go > 0).map((t) => [t.s / 60, t.group])).toEqual(six.map((who, i) => [17 + i, [who]]));
     expect(a.window).toEqual({ s: h(17), e: h(18) });
     const r = rankSlots(ev);
     expect(r.best?.slot.id).toBe('b');
@@ -63,16 +81,29 @@ describe('overlap', () => {
   });
 
   it('partial overlaps: the group is the people present together, and touching ranges do not overlap', () => {
-    const ev = event([{ id: 'a' }], [
-      person('Ana', { a: { ranges: [{ s: h(17), e: h(20) }] } }),
-      person('Ben', { a: { ranges: [{ s: h(19), e: h(22) }] } }),
-      person('Cleo', { a: { ranges: [{ s: h(21), e: h(23) }] } }),
-      person('Dev', { a: { ranges: [{ s: h(23), e: h(24) }] } })
-    ]);
+    const ev = event(
+      [{ id: 'a' }],
+      [
+        person('Ana', { a: { ranges: [{ s: h(17), e: h(20) }] } }),
+        person('Ben', { a: { ranges: [{ s: h(19), e: h(22) }] } }),
+        person('Cleo', { a: { ranges: [{ s: h(21), e: h(23) }] } }),
+        person('Dev', { a: { ranges: [{ s: h(23), e: h(24) }] } }),
+      ],
+    );
     const st = slotStats('a', ev.responses, ev.win, HOUR);
     expect(st.slots.filter((t) => t.go > 0).map((t) => [t.s / 60, t.group])).toEqual([
-      [17, ['Ana']], [17.5, ['Ana']], [18, ['Ana']], [18.5, ['Ana']], [19, ['Ana', 'Ben']], [19.5, ['Ben']],
-      [20, ['Ben']], [20.5, ['Ben']], [21, ['Ben', 'Cleo']], [21.5, ['Cleo']], [22, ['Cleo']], [23, ['Dev']]
+      [17, ['Ana']],
+      [17.5, ['Ana']],
+      [18, ['Ana']],
+      [18.5, ['Ana']],
+      [19, ['Ana', 'Ben']],
+      [19.5, ['Ben']],
+      [20, ['Ben']],
+      [20.5, ['Ben']],
+      [21, ['Ben', 'Cleo']],
+      [21.5, ['Cleo']],
+      [22, ['Cleo']],
+      [23, ['Dev']],
     ]);
     // 10:30–11:30pm: Cleo leaves at 11 and Dev arrives at 11, so nobody covers it.
     expect(st.slots.find((t) => t.s === h(22.5))!.go).toBe(0);
@@ -81,10 +112,10 @@ describe('overlap', () => {
   });
 
   it('only times inside the organiser window count', () => {
-    const ev = event([{ id: 'a' }], [
-      person('Ana', { a: { ranges: [{ s: h(14), e: h(16) }] } }),
-      person('Ben', { a: { ranges: [{ s: h(16), e: h(18) }] } })
-    ]);
+    const ev = event(
+      [{ id: 'a' }],
+      [person('Ana', { a: { ranges: [{ s: h(14), e: h(16) }] } }), person('Ben', { a: { ranges: [{ s: h(16), e: h(18) }] } })],
+    );
     const st = slotStats('a', ev.responses, ev.win, HOUR);
     expect(st.group).toEqual(['Ben']);
     expect(st.window).toEqual({ s: h(17), e: h(18) });
@@ -94,24 +125,30 @@ describe('overlap', () => {
 
 describe('conditions within a slot', () => {
   it('cascading elimination', () => {
-    const ev = event([{ id: 'a' }], [
-      person('Ana', { a: { will: 'if', conds: [needs('Ben')] } }),
-      person('Ben', { a: { will: 'if', conds: [needs('Cleo')] } }),
-      person('Cleo', { a: { will: 'if', conds: [atLeast(5)] } }),
-      person('Dev', { a: {} })
-    ]);
+    const ev = event(
+      [{ id: 'a' }],
+      [
+        person('Ana', { a: { will: 'if', conds: [needs('Ben')] } }),
+        person('Ben', { a: { will: 'if', conds: [needs('Cleo')] } }),
+        person('Cleo', { a: { will: 'if', conds: [atLeast(5)] } }),
+        person('Dev', { a: {} }),
+      ],
+    );
     const st = slotStats('a', ev.responses, ev.win);
     expect(st.group).toEqual(['Dev']);
     expect(st.rounds.map((r) => r.removed)).toEqual([['Cleo'], ['Ben'], ['Ana']]);
   });
 
   it('a minimum counts only the people free for the same slot', () => {
-    const ev = event([{ id: 'a' }], [
-      person('Ana', { a: {} }),
-      person('Ben', { a: {} }),
-      person('Cleo', { a: { ranges: [{ s: h(22), e: h(23) }] } }),
-      person('Dev', { a: { will: 'if', conds: [atLeast(4)], ranges: [{ s: h(17), e: h(21) }] } })
-    ]);
+    const ev = event(
+      [{ id: 'a' }],
+      [
+        person('Ana', { a: {} }),
+        person('Ben', { a: {} }),
+        person('Cleo', { a: { ranges: [{ s: h(22), e: h(23) }] } }),
+        person('Dev', { a: { will: 'if', conds: [atLeast(4)], ranges: [{ s: h(17), e: h(21) }] } }),
+      ],
+    );
     const st = slotStats('a', ev.responses, ev.win, HOUR);
     expect(st.slots.find((t) => t.s === h(17))!.freeList.map((r) => r.who)).toEqual(['Ana', 'Ben', 'Dev']);
     expect(st.slots.find((t) => t.s === h(17))!.group).toEqual(['Ana', 'Ben']); // 3 present < 4
@@ -124,16 +161,21 @@ describe('conditions within a slot', () => {
   });
 
   it('circular dependencies: both go when present together, neither when apart', () => {
-    const together = event([{ id: 'a' }], [
-      person('Ana', { a: { will: 'if', conds: [needs('Ben')] } }),
-      person('Ben', { a: { will: 'if', conds: [needs('Ana')] } })
-    ]);
+    const together = event(
+      [{ id: 'a' }],
+      [person('Ana', { a: { will: 'if', conds: [needs('Ben')] } }), person('Ben', { a: { will: 'if', conds: [needs('Ana')] } })],
+    );
     expect(slotStats('a', together.responses, together.win).group).toEqual(['Ana', 'Ben']);
 
-    const apart = event([{ id: 'a' }], [
-      person('Ana', { a: { will: 'if', conds: [needs('Ben')], ranges: [{ s: h(17), e: h(19) }] } }),
-      person('Ben', { a: { will: 'if', conds: [needs('Ana')], ranges: [{ s: h(20), e: h(22) }] } })
-    ], WIN, 60);
+    const apart = event(
+      [{ id: 'a' }],
+      [
+        person('Ana', { a: { will: 'if', conds: [needs('Ben')], ranges: [{ s: h(17), e: h(19) }] } }),
+        person('Ben', { a: { will: 'if', conds: [needs('Ana')], ranges: [{ s: h(20), e: h(22) }] } }),
+      ],
+      WIN,
+      60,
+    );
     const st = slotStats('a', apart.responses, apart.win, HOUR);
     expect(st.go).toBe(0);
     expect(st.slots.every((t) => t.go === 0)).toBe(true);
@@ -142,11 +184,7 @@ describe('conditions within a slot', () => {
   });
 
   it('No and Not free never count, whatever their ranges', () => {
-    const ev = event([{ id: 'a' }], [
-      person('Ana', { a: {} }),
-      person('Ben', { a: { will: 'no' } }),
-      person('Cleo', { a: { avail: 0 } })
-    ]);
+    const ev = event([{ id: 'a' }], [person('Ana', { a: {} }), person('Ben', { a: { will: 'no' } }), person('Cleo', { a: { avail: 0 } })]);
     const st = slotStats('a', ev.responses, ev.win);
     expect([st.free, st.go, st.group]).toEqual([1, 1, ['Ana']]);
   });
@@ -154,34 +192,45 @@ describe('conditions within a slot', () => {
 
 describe('ranking tie-breaks', () => {
   it('Favourites break a group-size tie across days, even against an earlier day', () => {
-    const ev = event([{ id: 'a', iso: '2026-10-23' }, { id: 'b', iso: '2026-10-24' }], [
-      person('Ana', { a: {}, b: { avail: 2 } }),
-      person('Ben', { a: {}, b: {} })
-    ]);
+    const ev = event(
+      [
+        { id: 'a', iso: '2026-10-23' },
+        { id: 'b', iso: '2026-10-24' },
+      ],
+      [person('Ana', { a: {}, b: { avail: 2 } }), person('Ben', { a: {}, b: {} })],
+    );
     expect(rankSlots(ev).best?.slot.id).toBe('b');
     expect(rankSlots(ev, { favourites: false }).best?.slot.id).toBe('a');
   });
 
   it('Favourites break a group-size tie between times on the same day', () => {
-    const ev = event([{ id: 'a' }], [
-      person('Ana', { a: { ranges: [{ s: h(17), e: h(18) }] } }),
-      person('Ben', { a: { avail: 2, ranges: [{ s: h(20), e: h(21) }] } })
-    ]);
+    const ev = event(
+      [{ id: 'a' }],
+      [person('Ana', { a: { ranges: [{ s: h(17), e: h(18) }] } }), person('Ben', { a: { avail: 2, ranges: [{ s: h(20), e: h(21) }] } })],
+    );
     const st = slotStats('a', ev.responses, ev.win, HOUR);
     expect([st.group, st.favourites, st.window]).toEqual([['Ben'], 1, { s: h(20), e: h(21) }]);
   });
 
   it('earliest eligible date wins over event order', () => {
-    const ev = event([{ id: 'late', iso: '2026-10-24' }, { id: 'early', iso: '2026-10-23' }], [
-      person('Ana', { late: {}, early: {} })
-    ]);
+    const ev = event(
+      [
+        { id: 'late', iso: '2026-10-24' },
+        { id: 'early', iso: '2026-10-23' },
+      ],
+      [person('Ana', { late: {}, early: {} })],
+    );
     expect(rankSlots(ev).best?.slot.id).toBe('early');
   });
 
   it('on the same date, the earliest eligible time wins', () => {
-    const ev = event([{ id: 'p', iso: '2026-10-23' }, { id: 'q', iso: '2026-10-23' }], [
-      person('Ana', { p: { ranges: [{ s: h(21), e: h(23) }] }, q: { ranges: [{ s: h(18), e: h(20) }] } })
-    ]);
+    const ev = event(
+      [
+        { id: 'p', iso: '2026-10-23' },
+        { id: 'q', iso: '2026-10-23' },
+      ],
+      [person('Ana', { p: { ranges: [{ s: h(21), e: h(23) }] }, q: { ranges: [{ s: h(18), e: h(20) }] } })],
+    );
     expect(rankSlots(ev).best?.slot.id).toBe('q');
   });
 
@@ -193,11 +242,15 @@ describe('ranking tie-breaks', () => {
 
 describe('cross-midnight', () => {
   it('overlaps after midnight are found on the linear minute axis', () => {
-    const ev = event([{ id: 'a' }], [
-      person('Ana', { a: { ranges: [{ s: h(21), e: h(23) }] } }),
-      person('Ben', { a: { ranges: [{ s: h(23), e: h(25) }] } }),
-      person('Cleo', { a: { ranges: [{ s: h(24), e: h(27) }] } })
-    ], { s: h(21), e: h(26) });
+    const ev = event(
+      [{ id: 'a' }],
+      [
+        person('Ana', { a: { ranges: [{ s: h(21), e: h(23) }] } }),
+        person('Ben', { a: { ranges: [{ s: h(23), e: h(25) }] } }),
+        person('Cleo', { a: { ranges: [{ s: h(24), e: h(27) }] } }),
+      ],
+      { s: h(21), e: h(26) },
+    );
     const st = slotStats('a', ev.responses, ev.win, HOUR);
     expect(st.group).toEqual(['Ben', 'Cleo']);
     expect(st.window).toEqual({ s: h(24), e: h(25) }); // 12am–1am
@@ -206,9 +259,15 @@ describe('cross-midnight', () => {
   });
 
   it('after midnight is later than the same evening', () => {
-    const ev = event([{ id: 'p', iso: '2026-10-23' }, { id: 'q', iso: '2026-10-23' }], [
-      person('Ana', { p: { ranges: [{ s: h(24), e: h(25) }] }, q: { ranges: [{ s: h(22), e: h(23) }] } })
-    ], { s: h(21), e: h(26) }, 60);
+    const ev = event(
+      [
+        { id: 'p', iso: '2026-10-23' },
+        { id: 'q', iso: '2026-10-23' },
+      ],
+      [person('Ana', { p: { ranges: [{ s: h(24), e: h(25) }] }, q: { ranges: [{ s: h(22), e: h(23) }] } })],
+      { s: h(21), e: h(26) },
+      60,
+    );
     expect(rankSlots(ev).best?.slot.id).toBe('q');
   });
 });

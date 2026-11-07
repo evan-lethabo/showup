@@ -19,47 +19,36 @@ export type WheelTimePicker = {
  * Values are minutes after midnight (0–1439). Optional min/max bounds may
  * cross midnight. Class names are prefixed to avoid collisions with SHOWUP.
  */
-export function createWheelTimePicker(
-  container: HTMLElement,
-  opts: WheelTimePickerOptions = {},
-): WheelTimePicker {
+export function createWheelTimePicker(container: HTMLElement, opts: WheelTimePickerOptions = {}): WheelTimePicker {
   const step = opts.step ?? 15;
   const onChange = opts.onChange ?? (() => {});
   const DAY = 1440;
   const hasWindow = opts.min != null && opts.max != null;
   const winMin = hasWindow ? ((opts.min! % DAY) + DAY) % DAY : 0;
   const winMax = hasWindow ? ((opts.max! % DAY) + DAY) % DAY : 0;
-  const winLen = hasWindow ? ((winMax - winMin + DAY) % DAY || DAY) : DAY;
+  const winLen = hasWindow ? (winMax - winMin + DAY) % DAY || DAY : DAY;
 
   function inWindow(m: number) {
     if (!hasWindow) return true;
-    return ((m - winMin + DAY) % DAY) <= winLen;
+    return (m - winMin + DAY) % DAY <= winLen;
   }
 
   function nearestEdge(m: number) {
-    const toMin = Math.min(
-      (m - winMin + DAY) % DAY,
-      (winMin - m + DAY) % DAY,
-    );
-    const toMax = Math.min(
-      (m - winMax + DAY) % DAY,
-      (winMax - m + DAY) % DAY,
-    );
+    const toMin = Math.min((m - winMin + DAY) % DAY, (winMin - m + DAY) % DAY);
+    const toMax = Math.min((m - winMax + DAY) % DAY, (winMax - m + DAY) % DAY);
     return toMin <= toMax ? winMin : winMax;
   }
 
   const CYCLES = 21;
   const MID = Math.floor(CYCLES / 2);
   const hours = Array.from({ length: 12 }, (_, i) => String(i + 1));
-  const minutes = Array.from({ length: 60 / step }, (_, i) =>
-    String(i * step).padStart(2, "0"),
-  );
-  const periods = ["am", "pm"];
+  const minutes = Array.from({ length: 60 / step }, (_, i) => String(i * step).padStart(2, '0'));
+  const periods = ['am', 'pm'];
 
-  const wheel = document.createElement("div");
-  wheel.className = "twp-wheel";
-  wheel.setAttribute("role", "group");
-  if (opts.label) wheel.setAttribute("aria-label", opts.label);
+  const wheel = document.createElement('div');
+  wheel.className = 'twp-wheel';
+  wheel.setAttribute('role', 'group');
+  if (opts.label) wheel.setAttribute('aria-label', opts.label);
   wheel.innerHTML = '<div class="twp-band"></div>';
   container.appendChild(wheel);
 
@@ -73,38 +62,29 @@ export function createWheelTimePicker(
     raf: number;
   };
 
-  function makeColumn(
-    values: string[],
-    loops: boolean,
-    name: string,
-    extraClass?: string,
-  ): Column {
-    const el = document.createElement("div");
-    el.className = "twp-col" + (extraClass ? " " + extraClass : "");
+  function makeColumn(values: string[], loops: boolean, name: string, extraClass?: string): Column {
+    const el = document.createElement('div');
+    el.className = 'twp-col' + (extraClass ? ' ' + extraClass : '');
     el.tabIndex = 0;
-    el.setAttribute("role", "spinbutton");
-    el.setAttribute("aria-label", name);
+    el.setAttribute('role', 'spinbutton');
+    el.setAttribute('aria-label', name);
 
     const n = values.length;
     const copies = loops ? CYCLES : 1;
     const frag = document.createDocumentFragment();
-    frag.appendChild(
-      Object.assign(document.createElement("div"), { className: "twp-pad" }),
-    );
+    frag.appendChild(Object.assign(document.createElement('div'), { className: 'twp-pad' }));
     const items: HTMLDivElement[] = [];
     for (let c = 0; c < copies; c += 1) {
       for (let i = 0; i < n; i += 1) {
-        const item = document.createElement("div");
-        item.className = "twp-item";
+        const item = document.createElement('div');
+        item.className = 'twp-item';
         item.textContent = values[i];
         item.dataset.index = String(c * n + i);
         frag.appendChild(item);
         items.push(item);
       }
     }
-    frag.appendChild(
-      Object.assign(document.createElement("div"), { className: "twp-pad" }),
-    );
+    frag.appendChild(Object.assign(document.createElement('div'), { className: 'twp-pad' }));
     el.appendChild(frag);
     wheel.appendChild(el);
 
@@ -119,7 +99,7 @@ export function createWheelTimePicker(
     };
 
     el.addEventListener(
-      "scroll",
+      'scroll',
       () => {
         if (!col.raf) {
           col.raf = requestAnimationFrame(() => {
@@ -133,14 +113,12 @@ export function createWheelTimePicker(
       { passive: true },
     );
 
-    el.addEventListener("click", (event) => {
-      const item = (event.target as HTMLElement).closest<HTMLElement>(
-        ".twp-item",
-      );
+    el.addEventListener('click', (event) => {
+      const item = (event.target as HTMLElement).closest<HTMLElement>('.twp-item');
       if (item) scrollToIndex(col, Number(item.dataset.index), true);
     });
 
-    el.addEventListener("keydown", (event) => {
+    el.addEventListener('keydown', (event) => {
       const delta = { ArrowDown: 1, ArrowUp: -1 }[event.key];
       if (!delta) return;
       event.preventDefault();
@@ -150,11 +128,7 @@ export function createWheelTimePicker(
     return col;
   }
 
-  const cols = [
-    makeColumn(hours, true, "Hour"),
-    makeColumn(minutes, true, "Minute"),
-    makeColumn(periods, false, "am or pm", "twp-period"),
-  ];
+  const cols = [makeColumn(hours, true, 'Hour'), makeColumn(minutes, true, 'Minute'), makeColumn(periods, false, 'am or pm', 'twp-period')];
 
   function itemH(col: Column) {
     return col.items[0].offsetHeight;
@@ -173,7 +147,7 @@ export function createWheelTimePicker(
     const bounded = Math.max(0, Math.min(col.items.length - 1, index));
     col.el.scrollTo({
       top: bounded * itemH(col),
-      behavior: smooth ? "smooth" : "auto",
+      behavior: smooth ? 'smooth' : 'auto',
     });
   }
 
@@ -193,15 +167,12 @@ export function createWheelTimePicker(
   function settle(col: Column) {
     if (col.loops) {
       const index = currentIndex(col);
-      if (
-        index < (MID - 5) * col.n ||
-        index >= (MID + 6) * col.n
-      ) {
+      if (index < (MID - 5) * col.n || index >= (MID + 6) * col.n) {
         scrollToIndex(col, MID * col.n + (index % col.n), false);
       }
     }
     const value = col.values[currentValueIndex(col)];
-    col.el.setAttribute("aria-valuetext", value);
+    col.el.setAttribute('aria-valuetext', value);
     const total = get();
     if (!inWindow(total)) {
       set(nearestEdge(total), true);
@@ -222,33 +193,23 @@ export function createWheelTimePicker(
     if (!col.loops) return valueIndex;
     const current = currentIndex(col);
     const base = current - (current % col.n) + valueIndex;
-    return [base - col.n, base, base + col.n].reduce((a, b) =>
-      Math.abs(b - current) < Math.abs(a - current) ? b : a,
-    );
+    return [base - col.n, base, base + col.n].reduce((a, b) => (Math.abs(b - current) < Math.abs(a - current) ? b : a));
   }
 
   function set(total: number, smooth = false) {
-    const normalized =
-      ((Math.round(total / step) * step) % DAY + DAY) % DAY;
+    const normalized = (((Math.round(total / step) * step) % DAY) + DAY) % DAY;
     const hour24 = Math.floor(normalized / 60);
     const minute = normalized % 60;
     const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
     const targets = [hour12 - 1, minute / step, hour24 >= 12 ? 1 : 0];
     cols.forEach((col, index) => {
-      const target = smooth
-        ? nearestIndex(col, targets[index])
-        : col.loops
-          ? MID * col.n + targets[index]
-          : targets[index];
+      const target = smooth ? nearestIndex(col, targets[index]) : col.loops ? MID * col.n + targets[index] : targets[index];
       scrollToIndex(col, target, smooth);
     });
     if (!smooth) {
       cols.forEach((col) => {
         paint(col);
-        col.el.setAttribute(
-          "aria-valuetext",
-          col.values[currentValueIndex(col)],
-        );
+        col.el.setAttribute('aria-valuetext', col.values[currentValueIndex(col)]);
       });
     }
   }
@@ -258,12 +219,7 @@ export function createWheelTimePicker(
 
   return {
     get,
-    set: (minutesValue) =>
-      set(
-        inWindow(minutesValue)
-          ? minutesValue
-          : nearestEdge(minutesValue),
-      ),
+    set: (minutesValue) => set(inWindow(minutesValue) ? minutesValue : nearestEdge(minutesValue)),
     destroy: () => {
       cols.forEach((col) => {
         if (col.settleTimer) clearTimeout(col.settleTimer);

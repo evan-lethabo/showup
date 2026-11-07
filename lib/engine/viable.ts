@@ -78,9 +78,12 @@ export const START_COVER = 15;
 /** Does group condition `c` hold for a set with these participant ids and this many people? */
 export function conditionHolds(c: GroupCondition, ids: ReadonlySet<ParticipantId>, size: number): boolean {
   switch (c.type) {
-    case 'requires': return c.people.every((p) => ids.has(p));
-    case 'requires_any': return c.people.some((p) => ids.has(p));
-    case 'min_attendees': return size >= c.n;
+    case 'requires':
+      return c.people.every((p) => ids.has(p));
+    case 'requires_any':
+      return c.people.some((p) => ids.has(p));
+    case 'min_attendees':
+      return size >= c.n;
   }
 }
 
@@ -104,7 +107,10 @@ interface Person {
 }
 
 /** Simultaneous elimination on group conditions, until nothing changes. */
-function greatestFixedPoint(cand: readonly Person[], nameOf: (id: ParticipantId) => string): { viable: Person[]; rounds: EliminationRound[] } {
+function greatestFixedPoint(
+  cand: readonly Person[],
+  nameOf: (id: ParticipantId) => string,
+): { viable: Person[]; rounds: EliminationRound[] } {
   let cur = cand.slice();
   const rounds: EliminationRound[] = [];
   // All group conditions are positive (more people never breaks one), so this reaches the greatest fixed
@@ -131,7 +137,10 @@ function greatestFixedPoint(cand: readonly Person[], nameOf: (id: ParticipantId)
 
 /** Sorted, with touching or overlapping ranges merged; empty or inverted ranges dropped. Gaps stay gaps. */
 function mergeRanges(ranges: readonly Range[] | undefined): Range[] {
-  const sorted = (ranges || []).filter((rg) => rg.e > rg.s).map((rg) => ({ s: rg.s, e: rg.e })).sort((a, b) => a.s - b.s);
+  const sorted = (ranges || [])
+    .filter((rg) => rg.e > rg.s)
+    .map((rg) => ({ s: rg.s, e: rg.e }))
+    .sort((a, b) => a.s - b.s);
   const out: Range[] = [];
   for (const rg of sorted) {
     const last = out[out.length - 1];
@@ -159,7 +168,9 @@ function personFor(r: Response, id: string): Person | null {
   if (r.avail[id] === 0 || (will !== 'yes' && will !== 'if')) return null;
   const conds: readonly Condition[] = will === 'if' ? r.conds[id] || [] : [];
   if (will === 'if' && !conds.length) return null;
-  let lo = -Infinity, hi = Infinity, unresolvable = false;
+  let lo = -Infinity,
+    hi = Infinity,
+    unresolvable = false;
   const group: GroupCondition[] = [];
   for (const c of conds) {
     if (c.type === 'time') {
@@ -208,25 +219,49 @@ export function slotStats(slot: Slot | string, participants: readonly Response[]
   for (let s = w.s; s + need <= w.e; s += SLOT_STEP) {
     const e = s + (duration ?? SLOT_STEP);
     const free = people.filter((p) => covers(p.avail, s, s + need));
-    const { viable, rounds } = greatestFixedPoint(free.filter((p) => !p.unresolvable), nameOf);
+    const { viable, rounds } = greatestFixedPoint(
+      free.filter((p) => !p.unresolvable),
+      nameOf,
+    );
     const viableIds = new Set(viable.map((p) => p.r.id));
+    // An unresolvable condition (e.g. "if the weather's good") can't be checked, so the person is never counted as coming.
+    // They show as "maybe" when their other conditions would hold, and don't affect who else is viable.
     const tentative = free.filter((p) => {
       if (!p.unresolvable) return false;
       const ids = new Set(viableIds).add(p.r.id);
       return p.group.every((c) => conditionHolds(c, ids, ids.size));
     });
     const t: TimeSlotStats = {
-      s, e,
-      free: free.length, go: viable.length, tentative: tentative.length,
-      viable: viable.map((p) => p.r), freeList: free.map((p) => p.r), tentativeList: tentative.map((p) => p.r),
+      s,
+      e,
+      free: free.length,
+      go: viable.length,
+      tentative: tentative.length,
+      viable: viable.map((p) => p.r),
+      freeList: free.map((p) => p.r),
+      tentativeList: tentative.map((p) => p.r),
       favourites: viable.filter((p) => covers(p.favs, s, s + need)).length,
-      group: viable.map((p) => p.r.id), rounds
+      group: viable.map((p) => p.r.id),
+      rounds,
     };
     slots.push(t);
     if (!pick || betterPick(t, pick, useFav)) pick = t;
   }
 
-  if (!pick) return { free: 0, go: 0, tentative: 0, viable: [], freeList: [], tentativeList: [], favourites: 0, group: [], rounds: [], window: null, slots };
+  if (!pick)
+    return {
+      free: 0,
+      go: 0,
+      tentative: 0,
+      viable: [],
+      freeList: [],
+      tentativeList: [],
+      favourites: 0,
+      group: [],
+      rounds: [],
+      window: null,
+      slots,
+    };
   const { free, go, tentative, viable, freeList, tentativeList, favourites, group, rounds } = pick;
   return { free, go, tentative, viable, freeList, tentativeList, favourites, group, rounds, window: { s: pick.s, e: pick.e }, slots };
 }

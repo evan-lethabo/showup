@@ -63,13 +63,16 @@ describe('event creation validation', () => {
       field: 'days[0].end',
       message: "Each day's window needs to be at least 2 hr, the length of the event.",
     });
-    expect(errorOf({ ...base, durationMin: 90, days: [base.days[0], { date: '2030-01-06', start: 1200, end: 1260 }] }).message)
-      .toBe("Each day's window needs to be at least 1 hr 30 min, the length of the event.");
+    expect(errorOf({ ...base, durationMin: 90, days: [base.days[0], { date: '2030-01-06', start: 1200, end: 1260 }] }).message).toBe(
+      "Each day's window needs to be at least 1 hr 30 min, the length of the event.",
+    );
     expect(valueOf({ ...base, days: [{ date: '2030-01-05', start: 1200, end: 1320 }] }).days[0]!.end).toBe(1320);
   });
 
   it('normalises windows that cross midnight to ends above 1440', () => {
-    expect(valueOf({ ...base, days: [{ date: '2030-01-05', start: 1320, end: 60 }] }).days).toEqual([{ date: '2030-01-05', start: 1320, end: 1500 }]);
+    expect(valueOf({ ...base, days: [{ date: '2030-01-05', start: 1320, end: 60 }] }).days).toEqual([
+      { date: '2030-01-05', start: 1320, end: 1500 },
+    ]);
     expect(valueOf({ ...base, days: [{ date: '2030-01-05', start: 1320, end: 1500 }] }).days[0]!.end).toBe(1500);
     expect(errorOf({ ...base, days: [{ date: '2030-01-05', start: 1380, end: 30 }] }).field).toBe('days[0].end');
   });
@@ -91,17 +94,29 @@ describe('event creation validation', () => {
     expect(errorOf({ ...base, days: 'tomorrow' }).field).toBe('days');
     const many = Array.from({ length: 32 }, (_, i) => ({ date: `2030-02-${String(i + 1).padStart(2, '0')}`, start: 1080, end: 1380 }));
     expect(errorOf({ ...base, days: many }).field).toBe('days');
-    expect(errorOf({ ...base, days: [base.days[0], { ...base.days[0] }] })).toEqual({ field: 'days[1].date', message: 'Each date can only be picked once.' });
+    expect(errorOf({ ...base, days: [base.days[0], { ...base.days[0] }] })).toEqual({
+      field: 'days[1].date',
+      message: 'Each date can only be picked once.',
+    });
     for (const date of ['2030-02-30', '2030-13-01', '30-01-05', '2030-1-5', '']) {
       expect(errorOf({ ...base, days: [{ date, start: 1080, end: 1380 }] }).field).toBe('days[0].date');
     }
-    expect(errorOf({ ...base, days: [{ date: '2032-01-03', start: 1080, end: 1380 }] }).message).toBe('Candidate days must be within the next two years.');
-    const sorted = valueOf({ ...base, days: [{ date: '2030-01-09', start: 600, end: 900 }, { date: '2030-01-03', start: 1080, end: 1380 }] }).days;
+    expect(errorOf({ ...base, days: [{ date: '2032-01-03', start: 1080, end: 1380 }] }).message).toBe(
+      'Candidate days must be within the next two years.',
+    );
+    const sorted = valueOf({
+      ...base,
+      days: [
+        { date: '2030-01-09', start: 600, end: 900 },
+        { date: '2030-01-03', start: 1080, end: 1380 },
+      ],
+    }).days;
     expect(sorted.map((d) => d.date)).toEqual(['2030-01-03', '2030-01-09']);
   });
 
   it("judges past dates by the event's own timezone, not UTC", () => {
-    const on = (timezone: string, date: string) => validateCreateEvent({ ...base, timezone, days: [{ date, start: 1080, end: 1380 }] }, now);
+    const on = (timezone: string, date: string) =>
+      validateCreateEvent({ ...base, timezone, days: [{ date, start: 1080, end: 1380 }] }, now);
     expect(on('Australia/Sydney', '2030-01-01').ok).toBe(false);
     expect(on('Australia/Sydney', '2030-01-02').ok).toBe(true);
     expect(on('America/Los_Angeles', '2030-01-01').ok).toBe(true);

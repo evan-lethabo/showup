@@ -39,10 +39,21 @@ describe('nearest endpoint', () => {
   });
 
   it('outside every range picks the closest end, preferring an end on a tie', () => {
-    const rs = [{ s: h(17), e: h(18) }, { s: h(21), e: h(22) }];
+    const rs = [
+      { s: h(17), e: h(18) },
+      { s: h(21), e: h(22) },
+    ];
     expect(nearestEndpoint(rs, h(19))).toEqual({ idx: 0, edge: 'e' });
     expect(nearestEndpoint(rs, h(20))).toEqual({ idx: 1, edge: 's' });
-    expect(nearestEndpoint([{ s: h(18), e: h(19) }, { s: h(21), e: h(22) }], h(20))).toEqual({ idx: 0, edge: 'e' });
+    expect(
+      nearestEndpoint(
+        [
+          { s: h(18), e: h(19) },
+          { s: h(21), e: h(22) },
+        ],
+        h(20),
+      ),
+    ).toEqual({ idx: 0, edge: 'e' });
     expect(nearestEndpoint(rs, h(23))).toEqual({ idx: 1, edge: 'e' });
   });
 });
@@ -101,7 +112,11 @@ describe('shifting a whole range', () => {
   });
 
   it('stops short of neighbouring ranges so they never merge', () => {
-    const rs = [{ s: h(17), e: h(18) }, { s: h(19), e: h(20) }, { s: h(22), e: h(23) }];
+    const rs = [
+      { s: h(17), e: h(18) },
+      { s: h(19), e: h(20) },
+      { s: h(22), e: h(23) },
+    ];
     expect(shiftRange(rs, 1, h(5), win)[1]).toEqual({ s: h(20.5), e: h(21.5) });
     expect(shiftRange(rs, 1, h(-5), win)[1]).toEqual({ s: h(18.5), e: h(19.5) });
   });

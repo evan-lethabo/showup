@@ -6,10 +6,15 @@ export default function RoundCard({ v, side = false }: { v: any; side?: boolean 
     <section className="glass round s-body" aria-label="Proposed time" aria-live="polite">
       {v.roundHasTally ? (
         <>
-          <p className="round-tally" role="status">{v.roundTallyLine}</p>
+          <p className="round-tally" role="status">
+            {v.roundTallyLine}
+          </p>
           <ul className="round-people" aria-label="Replies">
             {v.roundTally.map((t: any) => (
-              <li key={t.name} className={t.cls}><span className="round-chip-name">{t.name}</span><span className="round-chip-state">{t.label}</span></li>
+              <li key={t.name} className={t.cls}>
+                <span className="round-chip-name">{t.name}</span>
+                <span className="round-chip-state">{t.label}</span>
+              </li>
             ))}
           </ul>
         </>
@@ -30,9 +35,13 @@ export default function RoundCard({ v, side = false }: { v: any; side?: boolean 
         <>
           <p className="label-red">Waiting for replies</p>
           <p className="round-when">{v.roundWhen}</p>
-          <p className="round-note">{v.roundBy}. Goes ahead if at least {v.roundMin} people, including you, are in.</p>
+          <p className="round-note">
+            {v.roundBy}. Goes ahead if at least {v.roundMin} people, including you, are in.
+          </p>
           <div className="btn-row">
-            <button type="button" className="btn btn-secondary" onClick={v.askClosePoll}>Close poll now</button>
+            <button type="button" className="btn btn-secondary" onClick={v.askClosePoll}>
+              Close poll now
+            </button>
           </div>
         </>
       ) : null}
@@ -45,18 +54,32 @@ export default function RoundCard({ v, side = false }: { v: any; side?: boolean 
       ) : null}
       {v.roundGuestAsk ? (
         <div className="btn-row">
-          <button type="button" className="btn btn-primary" onClick={v.voteIn} disabled={v.roundBusy}>I'm in</button>
-          <button type="button" className="btn btn-secondary" onClick={v.voteOut} disabled={v.roundBusy}>Can't make it</button>
+          <button type="button" className="btn btn-primary" onClick={v.voteIn} disabled={v.roundBusy}>
+            I'm in
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={v.voteOut} disabled={v.roundBusy}>
+            Can't make it
+          </button>
         </div>
       ) : null}
       {v.roundGuestVoted ? (
         <>
           <p className="round-note">{v.roundMyVote}</p>
-          <button type="button" className="text-btn text-btn-muted round-change" onClick={v.changeVote}>Change my answer</button>
+          <button type="button" className="text-btn text-btn-muted round-change" onClick={v.changeVote}>
+            Change my answer
+          </button>
         </>
       ) : null}
-      {v.roundCanWithdraw ? <button type="button" className="text-btn text-btn-muted round-withdraw" onClick={v.askWithdraw}>Cancel this time</button> : null}
-      {v.hasRoundError ? <p className="form-error" role="alert">{v.roundError}</p> : null}
+      {v.roundCanWithdraw ? (
+        <button type="button" className="text-btn text-btn-muted round-withdraw" onClick={v.askWithdraw}>
+          Cancel this time
+        </button>
+      ) : null}
+      {v.hasRoundError ? (
+        <p className="form-error" role="alert">
+          {v.roundError}
+        </p>
+      ) : null}
     </section>
   );
 }

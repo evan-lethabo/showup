@@ -5,12 +5,31 @@ import { ORGANISER_EVENTS_KEY, loadOrganiserEvents } from '../services/organiser
 
 const EVT = 'EVTAAAAAAAAAAAA1';
 const TOKEN = 'orgtokenorgtokenorgtokenorgtokenorgtokenabc';
-const stored = { id: EVT, title: 'Dinner', organiserName: 'Alex', durationMin: 180, timezone: 'Australia/Sydney', days: [{ date: '2026-10-23', start: 1080, end: 1380 }, { date: '2026-10-24', start: 1080, end: 1380 }], participants: [{ name: 'Sam', responded: true }, { name: 'Jo', responded: false }] };
+const stored = {
+  id: EVT,
+  title: 'Dinner',
+  organiserName: 'Alex',
+  durationMin: 180,
+  timezone: 'Australia/Sydney',
+  days: [
+    { date: '2026-10-23', start: 1080, end: 1380 },
+    { date: '2026-10-24', start: 1080, end: 1380 },
+  ],
+  participants: [
+    { name: 'Sam', responded: true },
+    { name: 'Jo', responded: false },
+  ],
+};
 const results = (over: Record<string, unknown> = {}) => ({
-  eventId: EVT, respondedCount: 8,
+  eventId: EVT,
+  respondedCount: 8,
   best: { date: '2026-10-24', startMin: 1140, endMin: 1320, free: 6, coming: 6, maybe: 0 },
-  days: [{ date: '2026-10-23', best: { startMin: 1140, endMin: 1320, free: 8, coming: 4, maybe: 2 } }, { date: '2026-10-24', best: { startMin: 1140, endMin: 1320, free: 6, coming: 6, maybe: 0 } }],
-  slots: [], ...over,
+  days: [
+    { date: '2026-10-23', best: { startMin: 1140, endMin: 1320, free: 8, coming: 4, maybe: 2 } },
+    { date: '2026-10-24', best: { startMin: 1140, endMin: 1320, free: 6, coming: 6, maybe: 0 } },
+  ],
+  slots: [],
+  ...over,
 });
 
 let store: Map<string, string>;
@@ -20,26 +39,48 @@ let reply: () => Promise<Response>;
 function mount(initialState: Record<string, unknown>, organiser = false) {
   const links = organiser ? { guestPath: '/e/' + EVT, organiserPath: `/e/${EVT}/admin?k=${TOKEN}` } : { guestPath: '/e/' + EVT };
   const c: any = new Component({ startAt: organiser ? 'fresh' : 'join', event: toFlowEvent(stored, links), initialState });
-  c.__host = { __setLogicState(patch: object, cb?: () => void) { c.state = { ...c.state, ...patch }; if (cb) cb(); } };
+  c.__host = {
+    __setLogicState(patch: object, cb?: () => void) {
+      c.state = { ...c.state, ...patch };
+      if (cb) cb();
+    },
+  };
   c.componentDidMount();
   return c;
 }
-function update(c: any, patch: Record<string, unknown>) { c.setState(patch); c.componentDidUpdate(c.props); }
+function update(c: any, patch: Record<string, unknown>) {
+  c.setState(patch);
+  c.componentDidUpdate(c.props);
+}
 const resultCalls = () => calls.filter((x) => x.url.endsWith('/results'));
 const ok = (body: unknown) => () => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
 
 beforeEach(() => {
   vi.useFakeTimers();
-  store = new Map(); calls = [];
+  store = new Map();
+  calls = [];
   reply = ok(results());
-  vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => { calls.push({ url, init }); return url.endsWith('/results') ? reply() : Promise.resolve(new Response('{}', { status: 401 })); }));
-  vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return url.endsWith('/results') ? reply() : Promise.resolve(new Response('{}', { status: 401 }));
+    }),
+  );
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => store.set(k, v),
+    removeItem: (k: string) => store.delete(k),
+  });
   vi.stubGlobal('location', { pathname: '/e/' + EVT, search: '', hash: '', origin: 'https://showup.test', host: 'showup.test' });
   vi.stubGlobal('history', { state: null, replaceState: vi.fn() });
   vi.stubGlobal('document', {});
   vi.stubGlobal('window', { matchMedia: () => ({ matches: true }), location: { assign: vi.fn() } });
 });
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe('results polling', () => {
   it('fetches on mount, then every 3s after each reply, without a credential for viewers', async () => {
@@ -58,7 +99,10 @@ describe('results polling', () => {
 
   it('never overlaps: the next request waits for the slow one', async () => {
     let release!: (r: Response) => void;
-    reply = () => new Promise((res) => { release = res; });
+    reply = () =>
+      new Promise((res) => {
+        release = res;
+      });
     const c = mount({ screen: 'join' });
     await vi.advanceTimersByTimeAsync(20_000);
     expect(resultCalls()).toHaveLength(1);
@@ -87,7 +131,10 @@ describe('results polling', () => {
 
   it('stops on the Respond form, ignores the reply that was in flight, and resumes with one loop', async () => {
     let release!: (r: Response) => void;
-    reply = () => new Promise((res) => { release = res; });
+    reply = () =>
+      new Promise((res) => {
+        release = res;
+      });
     const c = mount({ screen: 'join' });
     update(c, { screen: 'respond' });
     release(new Response(JSON.stringify(results({ respondedCount: 99 })), { status: 200 }));
@@ -136,11 +183,29 @@ describe('results view', () => {
   });
 
   it('shows the empty, no-confirmed-time and no-time-fits states', async () => {
-    reply = ok(results({ respondedCount: 0, best: null, days: [{ date: '2026-10-23', best: null }, { date: '2026-10-24', best: null }] }));
+    reply = ok(
+      results({
+        respondedCount: 0,
+        best: null,
+        days: [
+          { date: '2026-10-23', best: null },
+          { date: '2026-10-24', best: null },
+        ],
+      }),
+    );
     const c = mount({ screen: 'join' });
     await vi.advanceTimersByTimeAsync(0);
     expect(c.renderVals()).toMatchObject({ resultsEmpty: true, resultsNoBest: false, resultsRows: [] });
-    reply = ok(results({ respondedCount: 2, best: null, days: [{ date: '2026-10-23', best: { startMin: 1140, endMin: 1320, free: 2, coming: 0, maybe: 0 } }, { date: '2026-10-24', best: null }] }));
+    reply = ok(
+      results({
+        respondedCount: 2,
+        best: null,
+        days: [
+          { date: '2026-10-23', best: { startMin: 1140, endMin: 1320, free: 2, coming: 0, maybe: 0 } },
+          { date: '2026-10-24', best: null },
+        ],
+      }),
+    );
     await vi.advanceTimersByTimeAsync(3000);
     const v = c.renderVals();
     expect(v).toMatchObject({ resultsEmpty: false, resultsNoBest: true, resultsHasBest: false });
@@ -157,13 +222,25 @@ describe('results view', () => {
     c.componentWillUnmount();
   });
 
-  it.each([['organiser', true], ['guest', false]])('%s sees silver circles for who responded and who has not; nothing else about individuals', async (mode, org) => {
-    reply = ok({ ...results(), people: [{ name: 'Sam', responded: true }, { name: 'ella', responded: false }] });
+  it.each([
+    ['organiser', true],
+    ['guest', false],
+  ])('%s sees silver circles for who responded and who has not; nothing else about individuals', async (mode, org) => {
+    reply = ok({
+      ...results(),
+      people: [
+        { name: 'Sam', responded: true },
+        { name: 'ella', responded: false },
+      ],
+    });
     const c = mount({ screen: 'event', mode, myName: 'Alex', participantId: org ? undefined : 'P1' }, org);
     await vi.advanceTimersByTimeAsync(0);
     const v = c.renderVals();
     expect(v).toMatchObject({ showPeople: true, showLiveResults: true });
-    expect(v.resultsPeople.map((p: any) => [p.initial, p.tip, p.cls.includes('is-waiting')])).toEqual([['S', 'Sam', false], ['E', 'ella \u00b7 not replied yet', true]]);
+    expect(v.resultsPeople.map((p: any) => [p.initial, p.tip, p.cls.includes('is-waiting')])).toEqual([
+      ['S', 'Sam', false],
+      ['E', 'ella \u00b7 not replied yet', true],
+    ]);
     expect(v.resultsPeople[0].cls).toContain('glass-silver');
     expect(Object.keys(v.resultsPeople[0]).sort()).toEqual(['aria', 'cls', 'initial', 'key', 'name', 'tip']);
     c.componentWillUnmount();
@@ -183,10 +260,29 @@ describe('results view', () => {
 
 describe('Your events', () => {
   it('saves a created event locally, lists it newest first and opens its organiser link', async () => {
-    store.set(ORGANISER_EVENTS_KEY, JSON.stringify([{ eventId: 'OLDAAAAAAAAAAAA1', title: 'Old', adminUrl: '/e/OLDAAAAAAAAAAAA1/admin?k=x', createdAt: '2026-10-01T00:00:00.000Z' }]));
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ id: 'NEWAAAAAAAAAAAA2', guestPath: '/e/NEWAAAAAAAAAAAA2', organiserPath: '/e/NEWAAAAAAAAAAAA2/admin?k=tok' }), { status: 201 }))));
+    store.set(
+      ORGANISER_EVENTS_KEY,
+      JSON.stringify([
+        { eventId: 'OLDAAAAAAAAAAAA1', title: 'Old', adminUrl: '/e/OLDAAAAAAAAAAAA1/admin?k=x', createdAt: '2026-10-01T00:00:00.000Z' },
+      ]),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ id: 'NEWAAAAAAAAAAAA2', guestPath: '/e/NEWAAAAAAAAAAAA2', organiserPath: '/e/NEWAAAAAAAAAAAA2/admin?k=tok' }),
+            { status: 201 },
+          ),
+        ),
+      ),
+    );
     const c: any = new Component({ startAt: 'create' });
-    c.__host = { __setLogicState(patch: object) { c.state = { ...c.state, ...patch }; } };
+    c.__host = {
+      __setLogicState(patch: object) {
+        c.state = { ...c.state, ...patch };
+      },
+    };
     c.createEvent();
     await vi.advanceTimersByTimeAsync(0);
     expect((window as any).location.assign).toHaveBeenCalledWith('/e/NEWAAAAAAAAAAAA2/admin?k=tok');
@@ -198,14 +294,24 @@ describe('Your events', () => {
     const home: any = new Component({ startAt: 'landing' });
     const v = home.landingVals(home.state);
     expect(v.hasMyEvents).toBe(true);
-    expect(v.myEvents.map((e: any) => [e.name, e.href])).toEqual([['Weekend plans', '/e/NEWAAAAAAAAAAAA2/admin?k=tok'], ['Old', '/e/OLDAAAAAAAAAAAA1/admin?k=x']]);
+    expect(v.myEvents.map((e: any) => [e.name, e.href])).toEqual([
+      ['Weekend plans', '/e/NEWAAAAAAAAAAAA2/admin?k=tok'],
+      ['Old', '/e/OLDAAAAAAAAAAAA1/admin?k=x'],
+    ]);
   });
 
   it('saves nothing when creation fails, and survives malformed storage', async () => {
     store.set(ORGANISER_EVENTS_KEY, '{not json');
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: { message: 'nope' } }), { status: 400 }))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response(JSON.stringify({ error: { message: 'nope' } }), { status: 400 }))),
+    );
     const c: any = new Component({ startAt: 'create' });
-    c.__host = { __setLogicState(patch: object) { c.state = { ...c.state, ...patch }; } };
+    c.__host = {
+      __setLogicState(patch: object) {
+        c.state = { ...c.state, ...patch };
+      },
+    };
     c.createEvent();
     await vi.advanceTimersByTimeAsync(0);
     expect(loadOrganiserEvents()).toEqual([]);

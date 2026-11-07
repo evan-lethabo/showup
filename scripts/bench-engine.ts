@@ -35,7 +35,7 @@ const slots = events.reduce((s, e) => s + e.slots.length, 0) / N;
 
 console.log(`engine benchmark: ${N.toLocaleString()} events (avg ${people.toFixed(1)} participants, ${slots.toFixed(1)} slots)`);
 console.log(`  total   ${total.toFixed(1)} ms`);
-console.log(`  mean    ${(total / N * 1000).toFixed(1)} µs/event`);
+console.log(`  mean    ${((total / N) * 1000).toFixed(1)} µs/event`);
 console.log(`  p50     ${(q(0.5) * 1000).toFixed(1)} µs/event`);
 console.log(`  p95     ${(q(0.95) * 1000).toFixed(1)} µs/event`);
 console.log(`  p99     ${(q(0.99) * 1000).toFixed(1)} µs/event`);

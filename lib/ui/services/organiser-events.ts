@@ -1,12 +1,23 @@
 // Organiser links for events created on this device. Device storage only; never sent to the server.
 export const ORGANISER_EVENTS_KEY = 'showup:organiser-events';
 
-export interface OrganiserEventEntry { eventId: string; title: string; adminUrl: string; createdAt: string }
+export interface OrganiserEventEntry {
+  eventId: string;
+  title: string;
+  adminUrl: string;
+  createdAt: string;
+}
 
 const valid = (x: unknown): x is OrganiserEventEntry => {
   const e = x as OrganiserEventEntry;
-  return !!e && typeof e.eventId === 'string' && typeof e.title === 'string' && typeof e.createdAt === 'string'
-    && typeof e.adminUrl === 'string' && e.adminUrl.startsWith('/e/');
+  return (
+    !!e &&
+    typeof e.eventId === 'string' &&
+    typeof e.title === 'string' &&
+    typeof e.createdAt === 'string' &&
+    typeof e.adminUrl === 'string' &&
+    e.adminUrl.startsWith('/e/')
+  );
 };
 
 export function loadOrganiserEvents(): OrganiserEventEntry[] {

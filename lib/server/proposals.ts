@@ -48,10 +48,25 @@ export interface ProposalView {
 const SELECT = `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, start_min, end_min, to_char(deadline, 'YYYY-MM-DD') AS deadline,
                        min_attendees, status, confirmed_count FROM proposals`;
 
-type Raw = { id: string; date: string; start_min: number; end_min: number; deadline: string | null; min_attendees: number; status: ProposalStatus; confirmed_count: number | null };
+type Raw = {
+  id: string;
+  date: string;
+  start_min: number;
+  end_min: number;
+  deadline: string | null;
+  min_attendees: number;
+  status: ProposalStatus;
+  confirmed_count: number | null;
+};
 const toRow = (r: Raw): ProposalRow => ({
-  id: r.id, date: r.date, startMin: Number(r.start_min), endMin: Number(r.end_min), deadline: r.deadline,
-  minAttendees: Number(r.min_attendees), status: r.status, confirmedCount: r.confirmed_count === null ? null : Number(r.confirmed_count),
+  id: r.id,
+  date: r.date,
+  startMin: Number(r.start_min),
+  endMin: Number(r.end_min),
+  deadline: r.deadline,
+  minAttendees: Number(r.min_attendees),
+  status: r.status,
+  confirmedCount: r.confirmed_count === null ? null : Number(r.confirmed_count),
 });
 
 async function latest(db: Db, eventId: string): Promise<ProposalRow | null> {
@@ -64,14 +79,17 @@ const pastDeadline = (p: ProposalRow, event: PublicEvent, now: Date) => p.deadli
 // ---- Create -----------------------------------------------------------------------------------------------------
 
 /** The proposal is a start time; the end is derived from the event's length (one slot step when there is none). */
-export interface CreateInput { date: unknown; startMin: unknown; deadline?: unknown; minAttendees: unknown }
-export type CreateResult =
-  | { status: 'ok' }
-  | { status: 'invalid'; field: string; message: string }
-  | { status: 'conflict' };
+export interface CreateInput {
+  date: unknown;
+  startMin: unknown;
+  deadline?: unknown;
+  minAttendees: unknown;
+}
+export type CreateResult = { status: 'ok' } | { status: 'invalid'; field: string; message: string } | { status: 'conflict' };
 
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
-const isIso = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
+const isIso = (v: unknown): v is string =>
+  typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
 
 export async function createProposal(db: Db, event: PublicEvent, input: CreateInput, now: Date = new Date()): Promise<CreateResult> {
   const bad = (field: string, message: string): CreateResult => ({ status: 'invalid', field, message });
@@ -84,11 +102,13 @@ export async function createProposal(db: Db, event: PublicEvent, input: CreateIn
   if (!isInt(startMin) || startMin < day.start || fitsBy > day.end || (startMin - day.start) % SLOT_STEP !== 0) {
     return bad('startMin', "That time doesn't fit this event.");
   }
-  if (!isInt(input.minAttendees) || input.minAttendees < 2 || input.minAttendees > MAX_MIN_ATTENDEES) return bad('minAttendees', 'Choose a minimum of at least 2 people.');
+  if (!isInt(input.minAttendees) || input.minAttendees < 2 || input.minAttendees > MAX_MIN_ATTENDEES)
+    return bad('minAttendees', 'Choose a minimum of at least 2 people.');
   let deadline: string | null = null;
   if (input.deadline !== undefined && input.deadline !== null && input.deadline !== '') {
     if (!isIso(input.deadline)) return bad('deadline', 'Choose a valid reply-by date.');
-    if (input.deadline < todayIn(event.timezone, now) || input.deadline > day.date) return bad('deadline', 'Choose a reply-by date between today and the day of the event.');
+    if (input.deadline < todayIn(event.timezone, now) || input.deadline > day.date)
+      return bad('deadline', 'Choose a reply-by date between today and the day of the event.');
     deadline = input.deadline;
   }
   try {
@@ -115,7 +135,10 @@ export async function createProposal(db: Db, event: PublicEvent, input: CreateIn
  */
 export async function resolveProposal(db: Db, event: PublicEvent, p: ProposalRow): Promise<void> {
   if (p.status !== 'open') return;
-  const voters = await db.query<{ participant_id: string }>(`SELECT participant_id FROM proposal_votes WHERE proposal_id = $1 AND vote = 'in'`, [p.id]);
+  const voters = await db.query<{ participant_id: string }>(
+    `SELECT participant_id FROM proposal_votes WHERE proposal_id = $1 AND vote = 'in'`,
+    [p.id],
+  );
   const inIds = new Set(voters.map((v) => v.participant_id));
   const responses = (await loadEngineResponses(db, event.id)).filter((r) => inIds.has(r.id));
   const stats = slotStats(slotIdFor(p.date), responses, { s: p.startMin, e: p.endMin }, { duration: event.durationMin });
@@ -144,10 +167,19 @@ export async function withdrawProposal(db: Db, eventId: string): Promise<void> {
 
 // ---- Vote -------------------------------------------------------------------------------------------------------
 
-export async function castVote(db: Db, event: PublicEvent, participantId: string, vote: Vote, now: Date = new Date()): Promise<'ok' | 'closed'> {
+export async function castVote(
+  db: Db,
+  event: PublicEvent,
+  participantId: string,
+  vote: Vote,
+  now: Date = new Date(),
+): Promise<'ok' | 'closed'> {
   const p = await latest(db, event.id);
   if (!p || p.status !== 'open') return 'closed';
-  if (pastDeadline(p, event, now)) { await resolveProposal(db, event, p); return 'closed'; }
+  if (pastDeadline(p, event, now)) {
+    await resolveProposal(db, event, p);
+    return 'closed';
+  }
   const rows = await db.query(
     `INSERT INTO proposal_votes (proposal_id, participant_id, event_id, vote)
      SELECT p.id, $2, $3, $4 FROM proposals p WHERE p.id = $1 AND p.status = 'open'
@@ -167,11 +199,20 @@ export async function getProposal(db: Db, event: PublicEvent, caller: Caller, no
     await resolveProposal(db, event, p);
     p = (await latest(db, event.id)) ?? p;
   }
-  const view: ProposalView = { status: p.status, date: p.date, startMin: p.startMin, endMin: p.endMin, deadline: p.deadline, minAttendees: p.minAttendees };
+  const view: ProposalView = {
+    status: p.status,
+    date: p.date,
+    startMin: p.startMin,
+    endMin: p.endMin,
+    deadline: p.deadline,
+    minAttendees: p.minAttendees,
+  };
   if (p.status !== 'open') view.confirmedCount = p.confirmedCount ?? 0;
   if (caller.kind === 'guest') {
     const [row] = await db.query<{ vote: Vote; confirmed: boolean | null }>(
-      'SELECT vote, confirmed FROM proposal_votes WHERE proposal_id = $1 AND participant_id = $2', [p.id, caller.id]);
+      'SELECT vote, confirmed FROM proposal_votes WHERE proposal_id = $1 AND participant_id = $2',
+      [p.id, caller.id],
+    );
     view.myVote = row?.vote ?? null;
     if (p.status !== 'open') view.myStatus = row?.confirmed === true ? 'going' : 'not_going';
   } else if (caller.kind === 'organiser') {
@@ -179,7 +220,9 @@ export async function getProposal(db: Db, event: PublicEvent, caller: Caller, no
     const rows = await db.query<{ name: string; vote: Vote | null }>(
       `SELECT pa.display_name AS name, v.vote FROM participants pa
          LEFT JOIN proposal_votes v ON v.participant_id = pa.id AND v.proposal_id = $1
-        WHERE pa.event_id = $2 ORDER BY pa.created_seq`, [p.id, event.id]);
+        WHERE pa.event_id = $2 ORDER BY pa.created_seq`,
+      [p.id, event.id],
+    );
     view.tally = rows.map((r) => ({ name: r.name, vote: r.vote ?? null }));
   }
   return view;

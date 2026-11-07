@@ -14,4 +14,4 @@ export class AppMixin {
     var s = this.state;
     return Object.assign({}, this.shellVals(s), this.resultsVals(s), this.inviteVals(s), this.proposeVals(s));
   }
-  }
+}

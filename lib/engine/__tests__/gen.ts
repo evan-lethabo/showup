@@ -15,15 +15,47 @@ export function rng(seed: number): () => number {
   };
 }
 
-const NAMES = ['Alex', 'Sam', 'Jess', 'Drew', 'Maya', 'Nina', 'Leo', 'Kai', 'Priya', 'Tom', 'Ana', 'Ben', 'Cleo', 'Dev',
-  'Eli', 'Fay', 'Gus', 'Hana', 'Ivo', 'June', 'Kofi', 'Lia', 'Mo', 'Ned', 'Oli', 'Pia', 'Quin', 'Raj', 'Sol', 'Tia'];
+const NAMES = [
+  'Alex',
+  'Sam',
+  'Jess',
+  'Drew',
+  'Maya',
+  'Nina',
+  'Leo',
+  'Kai',
+  'Priya',
+  'Tom',
+  'Ana',
+  'Ben',
+  'Cleo',
+  'Dev',
+  'Eli',
+  'Fay',
+  'Gus',
+  'Hana',
+  'Ivo',
+  'June',
+  'Kofi',
+  'Lia',
+  'Mo',
+  'Ned',
+  'Oli',
+  'Pia',
+  'Quin',
+  'Raj',
+  'Sol',
+  'Tia',
+];
 const N_VALUES = [1, 2, 2, 3, 3, 4, 5, 6, 8, 12, 20, 0];
 /** Participant id for a display name. */
 export const idOf = (name: string) => 'id:' + name.toLowerCase();
 
 export interface GenOptions {
-  minPeople: number; maxPeople: number;
-  minSlots: number; maxSlots: number;
+  minPeople: number;
+  maxPeople: number;
+  minSlots: number;
+  maxSlots: number;
   /** Probability that a response for a slot is "If…" (to exercise elimination). */
   ifRate?: number;
   /** Only `requires` and `min_attendees` (the conditions lib/ui/utils/recommend.ts can express). */
@@ -69,7 +101,8 @@ export function randomEvent(rand: () => number, o: GenOptions): EventData {
       if (roll < 0.05) continue; // slot missing from this response entirely
       r.avail[sl.id] = roll < 0.3 ? 0 : roll < 0.8 ? 1 : 2;
       const w = rand();
-      const will: Willingness | undefined = w < ifRate ? 'if' : w < ifRate + 0.3 ? 'yes' : w < ifRate + 0.4 ? 'no' : w < ifRate + 0.47 ? null : undefined;
+      const will: Willingness | undefined =
+        w < ifRate ? 'if' : w < ifRate + 0.3 ? 'yes' : w < ifRate + 0.4 ? 'no' : w < ifRate + 0.47 ? null : undefined;
       if (will !== undefined) r.will[sl.id] = will;
       const ranges: Range[] = [];
       const nr = int(0, 3);
@@ -80,8 +113,9 @@ export function randomEvent(rand: () => number, o: GenOptions): EventData {
       if (rand() < 0.95) r.ranges[sl.id] = ranges;
       const cr = rand();
       if (cr < 0.15) r.conds[sl.id] = null;
-      else if (cr < 0.25) { /* missing */ }
-      else r.conds[sl.id] = Array.from({ length: int(0, 3) }, condition);
+      else if (cr < 0.25) {
+        /* missing */
+      } else r.conds[sl.id] = Array.from({ length: int(0, 3) }, condition);
     }
     return r;
   });

@@ -1,5 +1,7 @@
 // Route handler logic, kept free of Next.js so it can be tested against an isolated database.
-import { isUnavailable, logDbError, pgCode, type Db } from './db';
+// Shared response and request helpers live in http-helpers.ts.
+import { logDbError, pgCode, type Db } from './db';
+import { error, failure, guestCredential, json, MAX_BODY_BYTES, readJson } from './http-helpers';
 import { authoriseOrganiser, createEvent, deleteEvent, updateEvent, getPublicEvent, guestPath, organiserPath } from './events';
 import { authenticateGuest, eventPeople, joinEvent, leaveEvent, loadOwnResponse, saveResponse } from './responses';
 import { interpretCondition, MAX_TEXT_CHARS, type InterpretationContext, type ModelTransport } from '../conditions/interpreter';
@@ -7,23 +9,7 @@ import { castVote, closeNow, createProposal, getProposal, withdrawProposal, type
 import { computeResults } from './results';
 import { validateCreateEvent } from './validate';
 
-export const MAX_BODY_BYTES = 16_384;
-const NO_STORE = { 'Cache-Control': 'no-store' };
-
-function json(status: number, body: unknown): Response {
-  return Response.json(body, { status, headers: NO_STORE });
-}
-
-function error(status: number, code: string, message: string, field?: string): Response {
-  return json(status, { error: field ? { code, message, field } : { code, message } });
-}
-
-function failure(context: string, err: unknown): Response {
-  logDbError(context, err);
-  return isUnavailable(err)
-    ? error(503, 'unavailable', "We couldn't reach the database. Try again in a moment.")
-    : error(500, 'server_error', 'Something went wrong on our side. Try again in a moment.');
-}
+export { MAX_BODY_BYTES };
 
 export async function checkHealth(getDb: () => Db): Promise<Response> {
   try {
@@ -66,30 +52,6 @@ export async function handleGetEvent(id: string, getDb: () => Db): Promise<Respo
     return event ? json(200, event) : error(404, 'not_found', "We couldn't find that event.");
   } catch (err) {
     return failure('get-event', err);
-  }
-}
-
-function guestCredential(req: Request): string | null {
-  const auth = req.headers.get('authorization');
-  if (auth?.toLowerCase().startsWith('bearer ')) {
-    const c = auth.slice(7).trim();
-    return c || null;
-  }
-  return null;
-}
-
-async function readJson(req: Request): Promise<{ ok: true; body: unknown } | { ok: false; res: Response }> {
-  if (!(req.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json')) {
-    return { ok: false, res: error(415, 'unsupported_media_type', 'Send JSON.') };
-  }
-  const declared = Number(req.headers.get('content-length') ?? 0);
-  if (declared > MAX_BODY_BYTES) return { ok: false, res: error(413, 'too_large', 'That request is too large.') };
-  const raw = await req.text();
-  if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) return { ok: false, res: error(413, 'too_large', 'That request is too large.') };
-  try {
-    return { ok: true, body: JSON.parse(raw) };
-  } catch {
-    return { ok: false, res: error(400, 'invalid_json', 'Send valid JSON.') };
   }
 }
 
@@ -159,13 +121,19 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
  * Interprets a guest's condition text for one day. Never persists anything; the guest confirms the result and saves
  * it through PUT /response. Event context comes from the database, never the client. Text is never logged.
  */
-export async function handleInterpret(eventId: string, req: Request, getDb: () => Db, getTransport: () => ModelTransport | null): Promise<Response> {
+export async function handleInterpret(
+  eventId: string,
+  req: Request,
+  getDb: () => Db,
+  getTransport: () => ModelTransport | null,
+): Promise<Response> {
   const cred = guestCredential(req);
   if (!cred) return error(401, 'unauthorised', 'Sign in with your guest link first.');
   const parsed = await readJson(req);
   if ('res' in parsed) return parsed.res;
   const body = parsed.body as { date?: unknown; text?: unknown };
-  if (typeof body.text !== 'string' || !body.text.trim()) return error(400, 'invalid_input', 'Enter what it depends on, then check it.', 'text');
+  if (typeof body.text !== 'string' || !body.text.trim())
+    return error(400, 'invalid_input', 'Enter what it depends on, then check it.', 'text');
   if ([...body.text].length > MAX_TEXT_CHARS) return error(400, 'invalid_input', `Keep it under ${MAX_TEXT_CHARS} characters.`, 'text');
   if (typeof body.date !== 'string') return error(400, 'invalid_input', "That day isn't one of this event's days.", 'date');
   let ctx: InterpretationContext;
@@ -178,7 +146,13 @@ export async function handleInterpret(eventId: string, req: Request, getDb: () =
     if (!event || !day) return error(400, 'invalid_input', "That day isn't one of this event's days.", 'date');
     const me = auth.participant;
     ctx = {
-      day: { date: day.date, weekday: WEEKDAYS[new Date(`${day.date}T00:00:00Z`).getUTCDay()]!, window_start: hhmm(day.start), window_end: hhmm(day.end), duration_minutes: event.durationMin ?? 0 },
+      day: {
+        date: day.date,
+        weekday: WEEKDAYS[new Date(`${day.date}T00:00:00Z`).getUTCDay()]!,
+        window_start: hhmm(day.start),
+        window_end: hhmm(day.end),
+        duration_minutes: event.durationMin ?? 0,
+      },
       self_name: me.displayName,
       self_id: me.id,
       roster: people.filter((p) => p.id !== me.id).map((p) => ({ id: p.id, name: p.displayName })),
@@ -220,7 +194,10 @@ export async function handleUpdateEvent(eventId: string, req: Request, getDb: ()
     const access = await authoriseOrganiser(db, eventId, cred);
     if (access.status === 'not_found') return error(404, 'not_found', "We couldn't find that event.");
     if (access.status === 'forbidden') return error(403, 'forbidden', 'Only the organiser can edit this event.');
-    const v = validateCreateEvent(parsed.body, now, { timezone: access.event.timezone, keepDates: new Set(access.event.days.map((d) => d.date)) });
+    const v = validateCreateEvent(parsed.body, now, {
+      timezone: access.event.timezone,
+      keepDates: new Set(access.event.days.map((d) => d.date)),
+    });
     if ('error' in v) return error(400, 'invalid_input', v.error.message, v.error.field);
     const { scheduleChanged } = await updateEvent(db, access.event, v.value);
     return json(200, { ok: true, scheduleChanged });
@@ -292,7 +269,12 @@ export async function handleCreateProposal(eventId: string, req: Request, getDb:
     if (access.status === 'not_found') return error(404, 'not_found', "We couldn't find that event.");
     if (access.status === 'forbidden') return error(403, 'forbidden', 'Only the organiser can propose a time.');
     const b = (parsed.body ?? {}) as Record<string, unknown>;
-    const result = await createProposal(db, access.event, { date: b.date, startMin: b.startMin, deadline: b.deadline, minAttendees: b.minAttendees }, now);
+    const result = await createProposal(
+      db,
+      access.event,
+      { date: b.date, startMin: b.startMin, deadline: b.deadline, minAttendees: b.minAttendees },
+      now,
+    );
     if (result.status === 'invalid') return error(400, 'invalid_input', result.message, result.field);
     if (result.status === 'conflict') return error(409, 'proposal_exists', 'A time is already proposed or confirmed for this event.');
     return json(201, { proposal: await getProposal(db, access.event, { kind: 'organiser' }, now) });

@@ -14,7 +14,9 @@
     "test:engine": "tsc -p lib/engine && vitest run lib/engine",
     "test:server": "tsc -p lib/server && vitest run lib/server",
     "db:setup": "tsx scripts/db-setup.ts",
-    "bench:engine": "tsx scripts/bench-engine.ts"
+    "bench:engine": "tsx scripts/bench-engine.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
@@ -34,6 +36,7 @@
     "pixelmatch": "5.3.0",
     "playwright": "1.64.1",
     "pngjs": "7.0.0",
+    "prettier": "3.9.10",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vitest": "4.1.12"

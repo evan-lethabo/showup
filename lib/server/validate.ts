@@ -9,7 +9,11 @@ export const NAME_MAX = 30;
 const DAY = 1440;
 const HORIZON_DAYS = 730;
 
-export interface EventDayInput { date: string; start: number; end: number }
+export interface EventDayInput {
+  date: string;
+  start: number;
+  end: number;
+}
 
 export interface CreateEventInput {
   title: string;
@@ -21,7 +25,10 @@ export interface CreateEventInput {
   days: EventDayInput[];
 }
 
-export interface ValidationError { field: string; message: string }
+export interface ValidationError {
+  field: string;
+  message: string;
+}
 
 /** Narrow with `'error' in v`: the root tsconfig isn't strict, so `v.ok` doesn't narrow there. */
 export type Validated<T> = { ok: true; value: T } | { ok: false; error: ValidationError };
@@ -88,7 +95,10 @@ export function validateName(v: unknown, field = 'name'): Validated<string> {
 }
 
 /** Editing an existing event: its timezone is fixed, and days it already has stay valid even once they're past. */
-export interface EditContext { timezone: string; keepDates: ReadonlySet<string> }
+export interface EditContext {
+  timezone: string;
+  keepDates: ReadonlySet<string>;
+}
 
 export function validateCreateEvent(body: unknown, now: Date = new Date(), edit?: EditContext): Validated<CreateEventInput> {
   if (!isObject(body)) return fail('body', 'Send the event as a JSON object.');

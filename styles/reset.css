@@ -1,3 +1,17 @@
-*,*::before,*::after{box-sizing:border-box}
-body{margin:0;background:#FFFBFA;color:#333333;font-family:"Manrope",sans-serif}
-a{color:#333333}a:hover{color:#000000}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #fffbfa;
+  color: #333333;
+  font-family: 'Manrope', sans-serif;
+}
+a {
+  color: #333333;
+}
+a:hover {
+  color: #000000;
+}

@@ -2,7 +2,10 @@
 import { neon } from '@neondatabase/serverless';
 
 export type Row = Record<string, unknown>;
-export interface Statement { text: string; params: unknown[] }
+export interface Statement {
+  text: string;
+  params: unknown[];
+}
 
 /** The only database surface the app uses: parameterised queries and atomic batches. */
 export interface Db {

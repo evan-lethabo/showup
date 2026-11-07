@@ -7,8 +7,12 @@ export default function ProposalNotice({ v }: { v: any }) {
       <p>{v.proposalText}</p>
       <p className="small">Nothing has been sent. Collecting final commitments is designed in the next phase.</p>
       <div className="btn-row">
-        <button type="button" className="text-btn" onClick={v.openPropose}>Edit</button>
-        <button type="button" className="text-btn" onClick={v.withdraw}>Withdraw</button>
+        <button type="button" className="text-btn" onClick={v.openPropose}>
+          Edit
+        </button>
+        <button type="button" className="text-btn" onClick={v.withdraw}>
+          Withdraw
+        </button>
       </div>
     </div>
   );

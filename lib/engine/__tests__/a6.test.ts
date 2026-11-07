@@ -19,7 +19,10 @@ const dots = (ev: EventData, id: string) => {
 describe('A6: Alex alone', () => {
   it('best is fri: both days go 1 / free 1, and on a full tie the earlier day wins', () => {
     const r = rankSlots(alexAlone(), OLD);
-    expect(r.days.map((d) => [d.slot.id, d.go, d.free])).toEqual([['fri', 1, 1], ['sat', 1, 1]]);
+    expect(r.days.map((d) => [d.slot.id, d.go, d.free])).toEqual([
+      ['fri', 1, 1],
+      ['sat', 1, 1],
+    ]);
     expect(r.best?.slot.id).toBe('fri');
   });
   it('dayDots: fri 7 – 11pm 1/1 and sat 7 – 11pm 1/1', () => {
