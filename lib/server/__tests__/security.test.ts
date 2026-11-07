@@ -17,7 +17,9 @@ beforeAll(async () => {
   eventId = (await createEvent(t.db, base)).id;
   eventB = (await createEvent(t.db, { ...base, title: 'Sec B' })).id;
 });
-afterAll(async () => { await t.close(); });
+afterAll(async () => {
+  await t.close();
+});
 
 function bearer(cred: string) {
   return { Authorization: `Bearer ${cred}` };
@@ -31,10 +33,15 @@ describe('guest credential isolation', () => {
     const authB = await authenticateGuest(t.db, eventId, b.credential);
     if (authB.status !== 'ok') throw new Error('auth');
     await saveResponse(t.db, eventId, authB.participant, {
-      days: [{
-        date: day.date, willingness: 'if', available: [{ start: 1140, end: 1320 }], favourite: [],
-        conditions: [{ type: 'requires', source: 'fallback', people: [{ name: 'Gamma' }] }],
-      }],
+      days: [
+        {
+          date: day.date,
+          willingness: 'if',
+          available: [{ start: 1140, end: 1320 }],
+          favourite: [],
+          conditions: [{ type: 'requires', source: 'fallback', people: [{ name: 'Gamma' }] }],
+        },
+      ],
     });
     const secret = 'B_PRIVATE_READBACK_MARKER_X7';
     await t.db.query('UPDATE conditions SET readback = $1 WHERE participant_id = $2', [secret, authB.participant.id]);
@@ -48,11 +55,17 @@ describe('guest credential isolation', () => {
     expect(getRes.status).toBe(200);
     expect(await getRes.text()).not.toContain(secret);
 
-    await handleSaveResponse(eventId, new Request('http://x/response', {
-      method: 'PUT',
-      headers: { ...bearer(a.credential), 'content-type': 'application/json' },
-      body: JSON.stringify({ days: [{ date: day.date, willingness: 'yes', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] }] }),
-    }), () => t.db);
+    await handleSaveResponse(
+      eventId,
+      new Request('http://x/response', {
+        method: 'PUT',
+        headers: { ...bearer(a.credential), 'content-type': 'application/json' },
+        body: JSON.stringify({
+          days: [{ date: day.date, willingness: 'yes', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] }],
+        }),
+      }),
+      () => t.db,
+    );
 
     const stillB = await loadOwnResponse(t.db, eventId, authB.participant);
     expect(stillB.days[0]?.willingness).toBe('if');
@@ -75,17 +88,27 @@ describe('self-reference on save', () => {
     if (auth.status !== 'ok') throw new Error('auth');
     const me = auth.participant;
     const byId = await saveResponse(t.db, eventId, me, {
-      days: [{
-        date: day.date, willingness: 'if', available: [{ start: 1140, end: 1320 }], favourite: [],
-        conditions: [{ type: 'requires', source: 'fallback', people: [{ id: me.id }] }],
-      }],
+      days: [
+        {
+          date: day.date,
+          willingness: 'if',
+          available: [{ start: 1140, end: 1320 }],
+          favourite: [],
+          conditions: [{ type: 'requires', source: 'fallback', people: [{ id: me.id }] }],
+        },
+      ],
     });
     expect(byId.status).toBe('invalid');
     const byName = await saveResponse(t.db, eventId, me, {
-      days: [{
-        date: day.date, willingness: 'if', available: [{ start: 1140, end: 1320 }], favourite: [],
-        conditions: [{ type: 'requires', source: 'fallback', people: [{ name: 'A' }] }],
-      }],
+      days: [
+        {
+          date: day.date,
+          willingness: 'if',
+          available: [{ start: 1140, end: 1320 }],
+          favourite: [],
+          conditions: [{ type: 'requires', source: 'fallback', people: [{ name: 'A' }] }],
+        },
+      ],
     });
     expect(byName.status).toBe('invalid');
   });
@@ -99,10 +122,15 @@ describe('public event privacy', () => {
     const auth = await authenticateGuest(t.db, eventId, j.credential);
     if (auth.status !== 'ok') throw new Error('auth');
     await saveResponse(t.db, eventId, auth.participant, {
-      days: [{
-        date: day.date, willingness: 'if', available: [{ start: 1140, end: 1320 }], favourite: [{ start: 1140, end: 1320 }],
-        conditions: [{ type: 'requires', source: 'fallback', people: [{ name: 'Zed' }] }],
-      }],
+      days: [
+        {
+          date: day.date,
+          willingness: 'if',
+          available: [{ start: 1140, end: 1320 }],
+          favourite: [{ start: 1140, end: 1320 }],
+          conditions: [{ type: 'requires', source: 'fallback', people: [{ name: 'Zed' }] }],
+        },
+      ],
     });
     const pub = JSON.stringify(await getPublicEvent(t.db, eventId));
     expect(pub).not.toMatch(/1140|1320|"if"|requires|readback|token_hash|available|willingness/i);
@@ -117,15 +145,28 @@ describe('condition persistence hygiene', () => {
     const auth = await authenticateGuest(t.db, eventId, j.credential);
     if (auth.status !== 'ok') throw new Error('auth');
     await saveResponse(t.db, eventId, auth.participant, {
-      days: [{
-        date: day.date, willingness: 'if', available: [{ start: 1140, end: 1320 }], favourite: [],
-        conditions: [{
-          type: 'requires', source: 'fallback', people: [{ name: 'Sam' }],
-          readback: 'INJECTED_RAW_TEXT_SHOULD_NOT_PERSIST', rawText: 'only if Sam goes and weather is fine',
-        }],
-      }],
+      days: [
+        {
+          date: day.date,
+          willingness: 'if',
+          available: [{ start: 1140, end: 1320 }],
+          favourite: [],
+          conditions: [
+            {
+              type: 'requires',
+              source: 'fallback',
+              people: [{ name: 'Sam' }],
+              readback: 'INJECTED_RAW_TEXT_SHOULD_NOT_PERSIST',
+              rawText: 'only if Sam goes and weather is fine',
+            },
+          ],
+        },
+      ],
     });
-    const rows = await t.db.query<{ readback: string; payload: string }>('SELECT readback, payload::text AS payload FROM conditions WHERE participant_id = $1', [auth.participant.id]);
+    const rows = await t.db.query<{ readback: string; payload: string }>(
+      'SELECT readback, payload::text AS payload FROM conditions WHERE participant_id = $1',
+      [auth.participant.id],
+    );
     expect(rows[0]!.readback).not.toContain('INJECTED_RAW');
     expect(rows[0]!.payload).not.toContain('weather');
     expect(rows[0]!.payload).not.toContain('INJECTED');

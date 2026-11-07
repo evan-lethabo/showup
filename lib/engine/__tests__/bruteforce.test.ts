@@ -26,11 +26,19 @@ const covered = (ranges: readonly Range[] | undefined, s: number, e: number) => 
 };
 /** The slot respects every time condition. */
 const inTime = (r: Response, id: string, s: number, e: number) =>
-  condsOf(r, id).every((c) => c.type !== 'time' || ((c.earliest_start === undefined || s >= c.earliest_start) && (c.latest_end === undefined || e <= c.latest_end)));
+  condsOf(r, id).every(
+    (c) =>
+      c.type !== 'time' || ((c.earliest_start === undefined || s >= c.earliest_start) && (c.latest_end === undefined || e <= c.latest_end)),
+  );
 /** Free for [s, e): not Not free; Yes, or If… with at least one condition; inside time conditions; available throughout. */
-const freeFor = (ev: EventData, id: string, s: number, e: number) => ev.responses.filter((r) =>
-  r.avail[id] !== 0 && (r.will[id] === 'yes' || (r.will[id] === 'if' && condsOf(r, id).length > 0)) &&
-  inTime(r, id, s, e) && covered(r.ranges[id], s, e));
+const freeFor = (ev: EventData, id: string, s: number, e: number) =>
+  ev.responses.filter(
+    (r) =>
+      r.avail[id] !== 0 &&
+      (r.will[id] === 'yes' || (r.will[id] === 'if' && condsOf(r, id).length > 0)) &&
+      inTime(r, id, s, e) &&
+      covered(r.ranges[id], s, e),
+  );
 /** Favourite ranges: `favs` when the response has them, else (legacy) the availability ranges of a Favourite day. */
 const favRanges = (r: Response, id: string) => (r.favs ? r.favs[id] : r.avail[id] === 2 ? r.ranges[id] : undefined);
 const tentativeOf = (free: readonly Response[], viable: readonly Response[], id: string) =>
@@ -39,7 +47,10 @@ const tentativeOf = (free: readonly Response[], viable: readonly Response[], id:
 describe('greatest fixed point per slot (brute force, n ≤ 10)', () => {
   it('engine slots and pick = the largest self-consistent group of free people without unresolvable conditions; tentative per spec (2,000 events)', () => {
     const rand = rng(424242);
-    let checked = 0, nontrivial = 0, tentativeSeen = 0, timeLimited = 0;
+    let checked = 0,
+      nontrivial = 0,
+      tentativeSeen = 0,
+      timeLimited = 0;
     for (let i = 0; i < 2000; i++) {
       const ev = randomEvent(rand, { minPeople: 1, maxPeople: 10, minSlots: 1, maxSlots: 4, ifRate: 0.6 });
       const dur = DURATIONS[i % DURATIONS.length]!;
@@ -49,13 +60,17 @@ describe('greatest fixed point per slot (brute force, n ≤ 10)', () => {
         for (let s = ev.win.s; s + dur <= ev.win.e; s += 30) {
           const free = freeFor(ev, sl.id, s, s + dur);
           const cand = free.filter((r) => !unresolvable(r, sl.id));
-          let bestMasks: number[] = []; let bestSize = -1; let union = 0;
+          let bestMasks: number[] = [];
+          let bestSize = -1;
+          let union = 0;
           for (let mask = 0; mask < 1 << cand.length; mask++) {
             const g = cand.filter((_, k) => mask & (1 << k));
             if (!g.every((r) => groupOk(r, sl.id, g))) continue;
             union |= mask;
-            if (g.length > bestSize) { bestSize = g.length; bestMasks = [mask]; }
-            else if (g.length === bestSize) bestMasks.push(mask);
+            if (g.length > bestSize) {
+              bestSize = g.length;
+              bestMasks = [mask];
+            } else if (g.length === bestSize) bestMasks.push(mask);
           }
           // Positive conditions => the maximum is unique and equals the union of all consistent sets.
           expect(bestMasks).toHaveLength(1);
@@ -68,18 +83,30 @@ describe('greatest fixed point per slot (brute force, n ≤ 10)', () => {
           if (tentative.length) tentativeSeen++;
           if (ev.responses.some((r) => !inTime(r, sl.id, s, s + dur) && covered(r.ranges[sl.id], s, s + dur))) timeLimited++;
         }
-        expect(st.slots.map((t) => ({ s: t.s, group: t.group, free: t.free, tentative: t.tentativeList.map((r) => r.id), fav: t.favourites }))).toEqual(want);
+        expect(
+          st.slots.map((t) => ({ s: t.s, group: t.group, free: t.free, tentative: t.tentativeList.map((r) => r.id), fav: t.favourites })),
+        ).toEqual(want);
         // The day's pick: viable, then tentative, then Favourites (or, with nobody viable, free), then earliest.
         let pick: (typeof want)[number] | null = null;
         for (const t of want) {
-          if (!pick) { pick = t; continue; }
-          const better = t.group.length !== pick.group.length ? t.group.length > pick.group.length
-            : t.tentative.length !== pick.tentative.length ? t.tentative.length > pick.tentative.length
-              : t.group.length > 0 ? t.fav > pick.fav : t.free > pick.free;
+          if (!pick) {
+            pick = t;
+            continue;
+          }
+          const better =
+            t.group.length !== pick.group.length
+              ? t.group.length > pick.group.length
+              : t.tentative.length !== pick.tentative.length
+                ? t.tentative.length > pick.tentative.length
+                : t.group.length > 0
+                  ? t.fav > pick.fav
+                  : t.free > pick.free;
           if (better) pick = t;
         }
         expect(st.window?.s ?? null).toBe(pick ? pick.s : null);
-        expect([st.group, st.free, st.tentative, st.favourites]).toEqual(pick ? [pick.group, pick.free, pick.tentative.length, pick.fav] : [[], 0, 0, 0]);
+        expect([st.group, st.free, st.tentative, st.favourites]).toEqual(
+          pick ? [pick.group, pick.free, pick.tentative.length, pick.fav] : [[], 0, 0, 0],
+        );
         checked++;
       }
     }
@@ -101,7 +128,8 @@ describe('fixed point and trace (up to 30 people)', () => {
         expect(st.go).toBe(st.group.length);
         // Slots start every 30 minutes from the window start and fit inside the window.
         expect(st.slots.map((t) => t.s)).toEqual(
-          Array.from({ length: Math.max(0, Math.floor((ev.win.e - ev.win.s - dur) / 30) + 1) }, (_, k) => ev.win.s + 30 * k));
+          Array.from({ length: Math.max(0, Math.floor((ev.win.e - ev.win.s - dur) / 30) + 1) }, (_, k) => ev.win.s + 30 * k),
+        );
         for (const t of st.slots) {
           expect(t.e).toBe(t.s + dur);
           expect([t.go, t.tentative]).toEqual([t.group.length, t.tentativeList.length]);
@@ -125,9 +153,18 @@ describe('fixed point and trace (up to 30 people)', () => {
           expect(cur.map((r) => r.id)).toEqual(t.group);
         }
         // The day's headline numbers are one of its slots.
-        if (!st.window) { expect(st.slots).toEqual([]); continue; }
+        if (!st.window) {
+          expect(st.slots).toEqual([]);
+          continue;
+        }
         const chosen = st.slots.find((t) => t.s === st.window!.s)!;
-        expect([chosen.e, chosen.group, chosen.free, chosen.tentative, chosen.rounds]).toEqual([st.window.e, st.group, st.free, st.tentative, st.rounds]);
+        expect([chosen.e, chosen.group, chosen.free, chosen.tentative, chosen.rounds]).toEqual([
+          st.window.e,
+          st.group,
+          st.free,
+          st.tentative,
+          st.rounds,
+        ]);
       }
     }
   }, 20_000);

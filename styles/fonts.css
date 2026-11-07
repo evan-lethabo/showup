@@ -1,3 +1,11 @@
 /* Offline fallback for Manrope, ported from standalone-support.js §1 (same family name;
    the Google Fonts stylesheet linked in app/layout.tsx is used when online). */
-@font-face{font-family:"Manrope";font-style:normal;font-display:swap;font-weight:200 800;src:url("/fonts/manrope-latin-wght-normal.woff2") format("woff2-variations"),url("/fonts/manrope-latin-wght-normal.woff2") format("woff2");}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src:
+    url('/fonts/manrope-latin-wght-normal.woff2') format('woff2-variations'),
+    url('/fonts/manrope-latin-wght-normal.woff2') format('woff2');
+}

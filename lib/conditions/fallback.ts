@@ -13,7 +13,10 @@ export function titleCase(normalised: string): string {
 }
 
 /** A person in a condition as shown to its author: someone in the event, or a name nobody has joined with yet. */
-export interface PersonView { name: string; pending: boolean }
+export interface PersonView {
+  name: string;
+  pending: boolean;
+}
 
 /** A condition as its author sees it (server reads and the confirm sheet). Engine conditions use ids instead. */
 export type ConditionView =
@@ -42,9 +45,10 @@ export function readback(c: ConditionView): string {
     case 'requires':
     case 'requires_any': {
       const names = c.people.map((p) => p.name);
-      const head = c.type === 'requires' || names.length === 1
-        ? `You'll go only if ${list(names, 'and')} ${names.length > 1 ? 'come' : 'comes'}.`
-        : `You'll go only if at least one of ${list(names, 'or')} comes.`;
+      const head =
+        c.type === 'requires' || names.length === 1
+          ? `You'll go only if ${list(names, 'and')} ${names.length > 1 ? 'come' : 'comes'}.`
+          : `You'll go only if at least one of ${list(names, 'or')} comes.`;
       const pending = c.people.filter((p) => p.pending).map((p) => p.name);
       if (!pending.length) return head;
       return `${head} ${list(pending, 'and')} ${pending.length > 1 ? "haven't" : "hasn't"} joined yet, so this isn't met until they join and can come.`;
@@ -73,7 +77,11 @@ export type Chip =
 export function chipsToViews(chips: readonly Chip[]): ConditionView[] {
   const people = chips.filter((c): c is Extract<Chip, { type: 'person' }> => c.type === 'person');
   const out: ConditionView[] = [];
-  if (people.length) out.push({ type: 'requires', people: people.map((p) => ({ name: p.pending ? titleCase(normaliseName(p.name)) : p.name, pending: p.pending })) });
+  if (people.length)
+    out.push({
+      type: 'requires',
+      people: people.map((p) => ({ name: p.pending ? titleCase(normaliseName(p.name)) : p.name, pending: p.pending })),
+    });
   for (const c of chips) {
     if (c.type === 'min') out.push({ type: 'min_attendees', n: c.n });
     else if (c.type === 'tentative') out.push({ type: 'unresolvable', summary: OFFLINE_TENTATIVE_SUMMARY });
@@ -102,9 +110,13 @@ export function viewsToChips(views: readonly ConditionView[]): Chip[] {
 export type OfflineStatus = 'ok' | 'partial' | 'tentative' | 'self' | 'none' | 'empty';
 
 // Words that carry no condition by themselves. Anything else left over means part of the text wasn't understood.
-const FILLER = new Set(('if only as long provided providing so and also too but then when i ll d m will would can could be is are s re ' +
-  'there here going goes go come comes coming attend attends attending show shows up turn turns join joins joining at least a an ' +
-  'minimum of more than over people persons others friends us guests plus the it that we they in just get gets to me ok').split(' '));
+const FILLER = new Set(
+  (
+    'if only as long provided providing so and also too but then when i ll d m will would can could be is are s re ' +
+    'there here going goes go come comes coming attend attends attending show shows up turn turns join joins joining at least a an ' +
+    'minimum of more than over people persons others friends us guests plus the it that we they in just get gets to me ok'
+  ).split(' '),
+);
 const NUMBER = /^(\d+|two|three|four|five|six|seven|eight|nine|ten)$/;
 
 function escapeRe(s: string): string {
@@ -112,7 +124,10 @@ function escapeRe(s: string): string {
 }
 
 /** Interprets condition text with the offline regex parser, never silently dropping what it can't read. */
-export function interpretOffline(text: string, opts: { self: string; roster: readonly string[] }): { status: OfflineStatus; chips: Chip[] } {
+export function interpretOffline(
+  text: string,
+  opts: { self: string; roster: readonly string[] },
+): { status: OfflineStatus; chips: Chip[] } {
   const clean = text.replace(/[‘’`]/g, "'").replace(/\s+/g, ' ').trim();
   if (!clean) return { status: 'empty', chips: [] };
   const self = normaliseName(opts.self);
@@ -137,7 +152,10 @@ export function interpretOffline(text: string, opts: { self: string; roster: rea
 
   for (const r of roster) {
     const re = new RegExp(`(^|[^\\p{L}])${escapeRe(normaliseName(r))}(?=$|[^\\p{L}])`, 'u');
-    if (re.test(lower)) { addPerson(r); rest = rest.replace(new RegExp(` ${escapeRe(normaliseName(r))}(?:'s)? `, 'g'), ' '); }
+    if (re.test(lower)) {
+      addPerson(r);
+      rest = rest.replace(new RegExp(` ${escapeRe(normaliseName(r))}(?:'s)? `, 'g'), ' ');
+    }
   }
   for (const c of parsed.chips) {
     if (c.type === 'person' && c.name) {

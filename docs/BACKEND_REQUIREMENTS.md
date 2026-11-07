@@ -2,16 +2,16 @@
 
 > Extracted on 18 Oct 2026 from `docs/archive/BUILD_STAGES.md` (§3 Integration readiness, §4 Missing requirements, and the expected values from stage A6), with the text unchanged. Code paths in the original text refer to the old single-file source. They now map as follows:
 >
-> | Original reference | Now |
-> |---|---|
-> | `Main.dc.html` recommendation functions | The UI's characterised policy remains in `lib/ui/utils/recommend.ts`; a tested replacement exists in `lib/engine/` but is not wired in pending ranking decisions |
-> | `parseConditions`, `STOPWORDS`, `NUMWORDS` | `lib/ui/utils/conditions-parser.ts`, `lib/ui/data/constants.ts` |
-> | `store`, `loadMyEvents`, `recordMyEvent`, `saveEventData`, `loadEventData` (the storage seam) | `lib/ui/services/storage.ts` (future: `lib/supabase/`) |
-> | `dotRowsFrom` | `lib/ui/utils/dot-rows.ts` |
-> | Fixtures `ORG_RESP`, `GUEST_RESP`, `SAMPLE_SLOTS`, `SAMPLE_WINDOW` | `lib/ui/data/fixtures.ts` |
-> | `TODAY`, `FRESH_LINK` | `lib/ui/config.ts` |
-> | `SCREENS.md`, `DESIGN_SYSTEM.md` | `docs/` |
-> | `SOURCE_MANIFEST.md` | `docs/archive/` |
+> | Original reference                                                                            | Now                                                                                                                                                              |
+> | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | `Main.dc.html` recommendation functions                                                       | The UI's characterised policy remains in `lib/ui/utils/recommend.ts`; a tested replacement exists in `lib/engine/` but is not wired in pending ranking decisions |
+> | `parseConditions`, `STOPWORDS`, `NUMWORDS`                                                    | `lib/ui/utils/conditions-parser.ts`, `lib/ui/data/constants.ts`                                                                                                  |
+> | `store`, `loadMyEvents`, `recordMyEvent`, `saveEventData`, `loadEventData` (the storage seam) | `lib/ui/services/storage.ts` (future: `lib/supabase/`)                                                                                                           |
+> | `dotRowsFrom`                                                                                 | `lib/ui/utils/dot-rows.ts`                                                                                                                                       |
+> | Fixtures `ORG_RESP`, `GUEST_RESP`, `SAMPLE_SLOTS`, `SAMPLE_WINDOW`                            | `lib/ui/data/fixtures.ts`                                                                                                                                        |
+> | `TODAY`, `FRESH_LINK`                                                                         | `lib/ui/config.ts`                                                                                                                                               |
+> | `SCREENS.md`, `DESIGN_SYSTEM.md`                                                              | `docs/`                                                                                                                                                          |
+> | `SOURCE_MANIFEST.md`                                                                          | `docs/archive/`                                                                                                                                                  |
 >
 > Entry points for real data already exist: the flow root (`components/flow/FlowClient.tsx`) accepts `startAt`, `event` and `initialState` props, so a future `/e/[eventId]` route can load an event and render `<FlowClient startAt="join" event={ev} />`.
 
@@ -39,18 +39,18 @@ Re-checked on 18 Oct 2026 by running the unchanged functions against the fixture
 
 What exists now, where the seam is, and what has to be decided before each area can be built. "Blocked by" refers to §4.
 
-| Area | Current state | Seam in the source | Ready to build? | Blocked by |
-|---|---|---|---|---|
-| **Backend / API** | None. Everything is in the browser | The storage module (A5 / B10) | Only the seam. No API contract exists | R7, R8 |
-| **Persistence** | localStorage per device; event JSON in `showup-ev-<id>`; Your-events list | `saveEventData`, `loadEventData`, `recordMyEvent`, `loadMyEvents` | Schema draft: the shapes in `SCREENS.md` §9 can be the *starting* schema, but R3 may change `Range`/`Window`/`Slot` | R3, R7 |
-| **Identity and permissions** | A typed name; organiser rights = `mode === 'organiser'` on this device; responses keyed by `role + who`; anyone can "Preview as a guest" | `mode`, `myName`, `joinContinue`, `saveToEvent` | No | R6, R8 |
-| **Shareable link / QR** | One fixed fake URL and static QR for all events | `FRESH_LINK`, the QR SVG, `copy` | Generating a per-event link is mechanical once ids are server-issued | R8 |
-| **AI interpretation of conditions** | Regex `parseConditions` returning `{status, chips}`; two condition types; unsupported phrasing blocked | `parseConditions(raw, group)` → `{status: 'empty'\|'ok'\|'unsupported'\|'none', chips: Condition[]}`; the 600ms debounce in `onSheetText` | The contract can be kept, but its behaviour is undefined | R4 |
-| **Recommendation calculations** | The UI uses `dayStats`, `bestWindow`, `dayDots`, `summarise`; `lib/engine/` is implemented and tested separately | Pure functions and engine module | Integration is blocked. The engine adds a Favourite tie-break, so wiring it in would change policy | R1, R2, R3 |
-| **Private conditions** | Stored in plain text inside the shared event object; only hidden in the UI ("Only you see this") | `conds`, `condText` on `Response` | No. Today any client holding the event can read them | R5 |
-| **Proposal and confirmation** | `proposal {slotId, deadline, min}` saved locally; nothing is sent; no commitment step; status is derived | `saveProposal`, `withdraw`, propose sheet | No | R6 |
-| **Notifications / reminder** | Reminder text to copy by hand | `REMINDER` template | Out of scope until R6 | R6 |
-| **"Today" and time zone** | `TODAY = '2026-10-17'` hard-coded; minutes are local; "Sydney time" is text only | `TODAY`, `dayBefore`, date inputs | Swapping in the real date is mechanical; the time-zone rule is not | R6, R9 |
+| Area                                | Current state                                                                                                                            | Seam in the source                                                                                                                        | Ready to build?                                                                                                     | Blocked by |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------- |
+| **Backend / API**                   | None. Everything is in the browser                                                                                                       | The storage module (A5 / B10)                                                                                                             | Only the seam. No API contract exists                                                                               | R7, R8     |
+| **Persistence**                     | localStorage per device; event JSON in `showup-ev-<id>`; Your-events list                                                                | `saveEventData`, `loadEventData`, `recordMyEvent`, `loadMyEvents`                                                                         | Schema draft: the shapes in `SCREENS.md` §9 can be the _starting_ schema, but R3 may change `Range`/`Window`/`Slot` | R3, R7     |
+| **Identity and permissions**        | A typed name; organiser rights = `mode === 'organiser'` on this device; responses keyed by `role + who`; anyone can "Preview as a guest" | `mode`, `myName`, `joinContinue`, `saveToEvent`                                                                                           | No                                                                                                                  | R6, R8     |
+| **Shareable link / QR**             | One fixed fake URL and static QR for all events                                                                                          | `FRESH_LINK`, the QR SVG, `copy`                                                                                                          | Generating a per-event link is mechanical once ids are server-issued                                                | R8         |
+| **AI interpretation of conditions** | Regex `parseConditions` returning `{status, chips}`; two condition types; unsupported phrasing blocked                                   | `parseConditions(raw, group)` → `{status: 'empty'\|'ok'\|'unsupported'\|'none', chips: Condition[]}`; the 600ms debounce in `onSheetText` | The contract can be kept, but its behaviour is undefined                                                            | R4         |
+| **Recommendation calculations**     | The UI uses `dayStats`, `bestWindow`, `dayDots`, `summarise`; `lib/engine/` is implemented and tested separately                         | Pure functions and engine module                                                                                                          | Integration is blocked. The engine adds a Favourite tie-break, so wiring it in would change policy                  | R1, R2, R3 |
+| **Private conditions**              | Stored in plain text inside the shared event object; only hidden in the UI ("Only you see this")                                         | `conds`, `condText` on `Response`                                                                                                         | No. Today any client holding the event can read them                                                                | R5         |
+| **Proposal and confirmation**       | `proposal {slotId, deadline, min}` saved locally; nothing is sent; no commitment step; status is derived                                 | `saveProposal`, `withdraw`, propose sheet                                                                                                 | No                                                                                                                  | R6         |
+| **Notifications / reminder**        | Reminder text to copy by hand                                                                                                            | `REMINDER` template                                                                                                                       | Out of scope until R6                                                                                               | R6         |
+| **"Today" and time zone**           | `TODAY = '2026-10-17'` hard-coded; minutes are local; "Sydney time" is text only                                                         | `TODAY`, `dayBefore`, date inputs                                                                                                         | Swapping in the real date is mechanical; the time-zone rule is not                                                  | R6, R9     |
 
 **Do not** write a complete backend or a coordination algorithm from this document. The rows marked "No" need the decisions in §4 first.
 
@@ -59,6 +59,7 @@ What exists now, where the seam is, and what has to be decided before each area 
 ## 4. Missing requirements
 
 These are open questions only; none of them has been answered here. They fall into two kinds:
+
 - **Implementation gap:** the intended behaviour is known, but the code doesn't do it.
 - **Documentation gap:** nobody has specified the behaviour, so it can't be built without a decision.
 
@@ -66,7 +67,7 @@ These are open questions only; none of them has been answered here. They fall in
 
 - **Implemented:** `dayStats` keeps every Yes and If… person who is free that day, then repeatedly removes If… people whose conditions fail. A person condition needs that name to still be present; a minimum needs the remaining count ≥ n. It stops when nothing changes. This is the greatest fixed point **per day** for monotone conditions.
 - **Undefined:**
-  - Should it run per *window* (people present at the same time) rather than per day?
+  - Should it run per _window_ (people present at the same time) rather than per day?
   - Do conditions refer to presence in the final window, or anywhere that day?
   - How does a name condition match a person: by display name, or by identity?
   - Unknown names: they're currently dropped silently on confirm; is that right?
@@ -151,13 +152,13 @@ These are open questions only; none of them has been answered here. They fall in
 
 ### R9 · Smaller implementation and documentation gaps
 
-| Item | Kind |
-|---|---|
+| Item                                                                                               | Kind                                                                                                                                             |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `componentDidUpdate` defect (D1): scroll and focus, sheet Escape, flow red dots, participant focus | Fixed in `src/showup-standalone/` (A2). Participant "Saved" focus and propose-sheet focus not yet re-checked; the fix is also in the canvas copy |
-| Supplied wheel picker (D3) | Integrated in Create and Respond with scoped CSS and cross-midnight adapters |
-| Wordmark dot detached (D2) | Implementation gap, cosmetic; needs a decision whether to correct it |
-| `event.note` captured, never shown | Documentation gap: where it appears and who sees it |
-| `TODAY` hard-coded; no time zone | Implementation gap (the real date) + documentation gap (time-zone rule) |
-| Participant mode and sample page disconnected from real data | Documentation gap: keep as a demo or remove at integration? |
-| Proposal minimum: no upper bound in the flow vs 2–8 on the sample page | Documentation gap: which rule applies? |
-| Firefox / Safari / touch devices not verified | Implementation gap (testing) |
+| Supplied wheel picker (D3)                                                                         | Integrated in Create and Respond with scoped CSS and cross-midnight adapters                                                                     |
+| Wordmark dot detached (D2)                                                                         | Implementation gap, cosmetic; needs a decision whether to correct it                                                                             |
+| `event.note` captured, never shown                                                                 | Documentation gap: where it appears and who sees it                                                                                              |
+| `TODAY` hard-coded; no time zone                                                                   | Implementation gap (the real date) + documentation gap (time-zone rule)                                                                          |
+| Participant mode and sample page disconnected from real data                                       | Documentation gap: keep as a demo or remove at integration?                                                                                      |
+| Proposal minimum: no upper bound in the flow vs 2–8 on the sample page                             | Documentation gap: which rule applies?                                                                                                           |
+| Firefox / Safari / touch devices not verified                                                      | Implementation gap (testing)                                                                                                                     |

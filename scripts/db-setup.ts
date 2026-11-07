@@ -19,7 +19,9 @@ async function main() {
   } catch (err) {
     if (err instanceof SchemaDriftError) {
       console.error(err.message);
-      console.error(err.changed ? 'Missing tables were created, but the result does not match the expected schema.' : 'Nothing was changed.');
+      console.error(
+        err.changed ? 'Missing tables were created, but the result does not match the expected schema.' : 'Nothing was changed.',
+      );
     } else if (isUnavailable(err)) {
       console.error('Could not connect to the database. Check DATABASE_URL.');
       logDbError('db:setup', err);

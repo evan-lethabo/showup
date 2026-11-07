@@ -5,27 +5,64 @@
 import { loadEnvConfig } from '@next/env';
 loadEnvConfig(process.cwd(), false, { info: () => {}, error: console.error });
 
-import { interpretCondition, type Interpretation, type InterpretationContext, type CanonicalCondition } from '../lib/conditions/interpreter';
+import {
+  interpretCondition,
+  type Interpretation,
+  type InterpretationContext,
+  type CanonicalCondition,
+} from '../lib/conditions/interpreter';
 import { INTERPRETER_MODEL, openAiTransport } from '../lib/server/openai';
 
 const ROSTER = ['Alex', 'Ben', 'Chloe', 'Dan', 'Finn', 'Grace', 'Harry', 'Jess'].map((name) => ({ id: `P_${name.toLowerCase()}`, name }));
 const ctx = (text: string, end = '23:00'): InterpretationContext => ({
   day: { date: '2026-10-23', weekday: 'Friday', window_start: '18:00', window_end: end, duration_minutes: 180 },
-  self_name: 'Ella', self_id: 'P_ella', roster: ROSTER, text,
+  self_name: 'Ella',
+  self_id: 'P_ella',
+  roster: ROSTER,
+  text,
 });
 
 type Check = (r: Interpretation) => string | null;
-const only = (types: string[]): Check => (r) => {
-  const got = r.conditions.map((c) => c.type).sort().join(',');
-  return got === [...types].sort().join(',') ? null : `conditions ${got || 'none'}`;
-};
+const only =
+  (types: string[]): Check =>
+  (r) => {
+    const got = r.conditions
+      .map((c) => c.type)
+      .sort()
+      .join(',');
+    return got === [...types].sort().join(',') ? null : `conditions ${got || 'none'}`;
+  };
 const find = (r: Interpretation, type: string) => r.conditions.find((c) => c.type === type);
-const people = (c: CanonicalCondition | undefined) => (c?.people ?? []).map((p) => (p.pending ? `~${p.name}` : p.id)).sort().join(',');
-const all = (...checks: Check[]): Check => (r) => { for (const c of checks) { const e = c(r); if (e) return e; } return null; };
-const status = (s: string): Check => (r) => (r.status === s ? null : `status ${r.status}`);
-const ppl = (type: string, want: string): Check => (r) => (people(find(r, type)) === want ? null : `${type} people ${people(find(r, type))}`);
-const val = (type: string, key: keyof CanonicalCondition, want: unknown): Check => (r) => (find(r, type)?.[key] === want ? null : `${type}.${String(key)}=${String(find(r, type)?.[key])}`);
-const summary = (want: string): Check => (r) => (r.conditions.some((c) => c.type === 'unresolvable' && c.summary?.toLowerCase().includes(want)) ? null : `no unresolvable "${want}"`);
+const people = (c: CanonicalCondition | undefined) =>
+  (c?.people ?? [])
+    .map((p) => (p.pending ? `~${p.name}` : p.id))
+    .sort()
+    .join(',');
+const all =
+  (...checks: Check[]): Check =>
+  (r) => {
+    for (const c of checks) {
+      const e = c(r);
+      if (e) return e;
+    }
+    return null;
+  };
+const status =
+  (s: string): Check =>
+  (r) =>
+    r.status === s ? null : `status ${r.status}`;
+const ppl =
+  (type: string, want: string): Check =>
+  (r) =>
+    people(find(r, type)) === want ? null : `${type} people ${people(find(r, type))}`;
+const val =
+  (type: string, key: keyof CanonicalCondition, want: unknown): Check =>
+  (r) =>
+    find(r, type)?.[key] === want ? null : `${type}.${String(key)}=${String(find(r, type)?.[key])}`;
+const summary =
+  (want: string): Check =>
+  (r) =>
+    r.conditions.some((c) => c.type === 'unresolvable' && c.summary?.toLowerCase().includes(want)) ? null : `no unresolvable "${want}"`;
 const assumption: Check = (r) => (r.lines.length > r.conditions.length ? null : 'no assumption line');
 
 const CASES: { n: number; text: string; end?: string; check: Check }[] = [
@@ -44,30 +81,51 @@ const CASES: { n: number; text: string; end?: string; check: Check }[] = [
   { n: 13, text: 'if Priya comes', check: all(status('ok'), only(['requires']), ppl('requires', '~Priya')) },
   { n: 14, text: 'if my boyfriend can come', check: all(only(['unresolvable']), summary("isn't named")) },
   { n: 15, text: 'only if Ella comes', check: all(status('self'), only([])) },
-  { n: 16, text: "I'll go if Jess or Sam comes, but I need to be home by 10, and only if the weather's good",
-    check: all(status('ok'), only(['requires_any', 'time', 'unresolvable']), ppl('requires_any', 'P_jess,~Sam'), val('time', 'latest_end', 1320), summary('weather'), assumption) },
+  {
+    n: 16,
+    text: "I'll go if Jess or Sam comes, but I need to be home by 10, and only if the weather's good",
+    check: all(
+      status('ok'),
+      only(['requires_any', 'time', 'unresolvable']),
+      ppl('requires_any', 'P_jess,~Sam'),
+      val('time', 'latest_end', 1320),
+      summary('weather'),
+      assumption,
+    ),
+  },
   { n: 17, text: 'asdfgh', check: all(status('no_condition'), only([])) },
 ];
 
 async function main() {
   const key = process.env.OPENAI_API_KEY;
   const model = process.env.OPENAI_INTERPRETER_MODEL || INTERPRETER_MODEL;
-  if (!key) { console.error('FAIL: OPENAI_API_KEY is not set (.env.local or environment).'); process.exit(1); }
+  if (!key) {
+    console.error('FAIL: OPENAI_API_KEY is not set (.env.local or environment).');
+    process.exit(1);
+  }
   const transport = openAiTransport(key, { model });
   const runs = [...CASES, ...[1, 16].flatMap((n) => Array.from({ length: 5 }, () => ({ ...CASES.find((c) => c.n === n)!, repeat: true })))];
-  let failed = 0; let base = 0; let reps = 0; const times: number[] = [];
+  let failed = 0;
+  let base = 0;
+  let reps = 0;
+  const times: number[] = [];
   console.log(`model ${model}`);
   for (const c of runs) {
     const t0 = Date.now();
     const r = await interpretCondition(ctx(c.text, c.end), transport);
-    const ms = Date.now() - t0; times.push(ms);
+    const ms = Date.now() - t0;
+    times.push(ms);
     const why = r.source !== 'llm' ? `fallback (${r.failure ?? 'unknown'})` : c.check(r);
     const repeat = 'repeat' in c;
-    if (why) failed++; else if (repeat) reps++; else base++;
+    if (why) failed++;
+    else if (repeat) reps++;
+    else base++;
     console.log(`${why ? 'FAIL' : 'PASS'} case ${String(c.n).padStart(2)}${repeat ? ' (repeat)' : ''}  ${ms}ms${why ? `  ${why}` : ''}`);
   }
   times.sort((a, b) => a - b);
-  console.log(`\n${base}/17 cases, ${reps}/10 repeats; latency median ${times[Math.floor(times.length / 2)]}ms, max ${times[times.length - 1]}ms`);
+  console.log(
+    `\n${base}/17 cases, ${reps}/10 repeats; latency median ${times[Math.floor(times.length / 2)]}ms, max ${times[times.length - 1]}ms`,
+  );
   process.exit(failed ? 1 : 0);
 }
 

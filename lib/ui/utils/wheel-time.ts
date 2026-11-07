@@ -19,10 +19,7 @@ export function untilFromWheel(minutes: number, from: number): number {
  * Lift a time-of-day value into an organiser window, including a window that
  * crosses midnight (for example 1020–1500 for 5pm–1am).
  */
-export function minuteInWindow(
-  minutes: number,
-  window: { s: number; e: number },
-): number {
+export function minuteInWindow(minutes: number, window: { s: number; e: number }): number {
   let result = wheelMinute(minutes);
   while (result < window.s) result += DAY;
   while (result > window.e && result - DAY >= window.s) result -= DAY;

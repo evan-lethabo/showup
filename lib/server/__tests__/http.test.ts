@@ -10,7 +10,10 @@ const body = {
   title: 'Dinner',
   organiserName: 'Alex',
   timezone: 'Australia/Sydney',
-  days: [{ date: '2030-01-10', start: 1140, end: 1380 }, { date: '2030-01-04', start: 1320, end: 120 }],
+  days: [
+    { date: '2030-01-10', start: 1140, end: 1380 },
+    { date: '2030-01-04', start: 1320, end: 120 },
+  ],
 };
 
 const post = (b: unknown, headers: Record<string, string> = { 'content-type': 'application/json' }) =>
@@ -18,9 +21,17 @@ const post = (b: unknown, headers: Record<string, string> = { 'content-type': 'a
 
 let t: TestDb;
 const getDb = () => t.db;
-const down = (): Db => { throw new DbUnavailableError(); };
-beforeAll(async () => { t = await testDb(); vi.spyOn(console, 'error').mockImplementation(() => {}); });
-afterAll(async () => { vi.restoreAllMocks(); await t.close(); });
+const down = (): Db => {
+  throw new DbUnavailableError();
+};
+beforeAll(async () => {
+  t = await testDb();
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+afterAll(async () => {
+  vi.restoreAllMocks();
+  await t.close();
+});
 
 describe('GET /api/health', () => {
   it('runs a real query against the database', async () => {
@@ -36,7 +47,10 @@ describe('GET /api/health', () => {
     const res = await checkHealth(down);
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ ok: false });
-    const broken: Db = { query: () => Promise.reject(Object.assign(new Error('password authentication failed for user x at host y'), { code: '28P01' })), transaction: () => Promise.resolve() };
+    const broken: Db = {
+      query: () => Promise.reject(Object.assign(new Error('password authentication failed for user x at host y'), { code: '28P01' })),
+      transaction: () => Promise.resolve(),
+    };
     const res2 = await checkHealth(() => broken);
     expect(await res2.text()).toBe('{"ok":false}');
   });
@@ -56,8 +70,15 @@ describe('POST /api/events', () => {
     const got = await handleGetEvent(out.id, getDb);
     expect(got.status).toBe(200);
     expect(await got.json()).toEqual({
-      id: out.id, title: 'Dinner', organiserName: 'Alex', durationMin: 120, timezone: 'Australia/Sydney',
-      days: [{ date: '2030-01-04', start: 1320, end: 1560 }, { date: '2030-01-10', start: 1140, end: 1380 }],
+      id: out.id,
+      title: 'Dinner',
+      organiserName: 'Alex',
+      durationMin: 120,
+      timezone: 'Australia/Sydney',
+      days: [
+        { date: '2030-01-04', start: 1320, end: 1560 },
+        { date: '2030-01-10', start: 1140, end: 1380 },
+      ],
       participants: [],
     });
     expect((await authoriseOrganiser(t.db, out.id, m?.[2])).status).toBe('ok');
@@ -75,7 +96,13 @@ describe('POST /api/events', () => {
   it('returns field errors for invalid input, including a window shorter than the event', async () => {
     const res = await handleCreateEvent(post({ ...body, days: [{ date: '2030-01-04', start: 1200, end: 1260 }] }), getDb, now);
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: { code: 'invalid_input', field: 'days[0].end', message: "Each day's window needs to be at least 2 hr, the length of the event." } });
+    expect(await res.json()).toEqual({
+      error: {
+        code: 'invalid_input',
+        field: 'days[0].end',
+        message: "Each day's window needs to be at least 2 hr, the length of the event.",
+      },
+    });
     const before = await t.db.query('SELECT count(*)::int AS n FROM events');
     await handleCreateEvent(post({ ...body, title: '' }), getDb, now);
     expect(await t.db.query('SELECT count(*)::int AS n FROM events')).toEqual(before);
@@ -85,7 +112,15 @@ describe('POST /api/events', () => {
     expect((await handleCreateEvent(post('{"title":'), getDb, now)).status).toBe(400);
     expect((await handleCreateEvent(post(body, { 'content-type': 'text/plain' }), getDb, now)).status).toBe(415);
     expect((await handleCreateEvent(post({ ...body, title: 'x'.repeat(MAX_BODY_BYTES) }), getDb, now)).status).toBe(413);
-    expect((await handleCreateEvent(post(body, { 'content-type': 'application/json', 'content-length': String(MAX_BODY_BYTES + 1) }), getDb, now)).status).toBe(413);
+    expect(
+      (
+        await handleCreateEvent(
+          post(body, { 'content-type': 'application/json', 'content-length': String(MAX_BODY_BYTES + 1) }),
+          getDb,
+          now,
+        )
+      ).status,
+    ).toBe(413);
   });
 
   it('answers 503 without details when the database is unavailable', async () => {
@@ -110,7 +145,16 @@ describe('GET /api/events/:id', () => {
 describe('POST /api/events/:id/join', () => {
   it('409s for a name already taken, ignoring case and surrounding spaces', async () => {
     const { id } = await (await handleCreateEvent(post(body), getDb, now)).json();
-    const join = (name: string) => handleJoinEvent(id, new Request(`http://localhost/api/events/${id}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }), getDb);
+    const join = (name: string) =>
+      handleJoinEvent(
+        id,
+        new Request(`http://localhost/api/events/${id}/join`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name }),
+        }),
+        getDb,
+      );
     expect((await join('sam')).status).toBe(201);
     const dup = await join('Sam ');
     expect(dup.status).toBe(409);

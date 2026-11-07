@@ -7,11 +7,11 @@ It is **not** the same as the prototype's `lib/ui/utils/recommend.ts`, which the
 ```ts
 import { viableGroup, slotStats, rankSlots, slotWindow } from '@/lib/engine';
 
-viableGroup(day, responses, win, { duration })  // { group: ['Alex', ...], rounds: [{ removed: ['Jess'], reason, failed }] }
-slotStats(day, responses, win, { duration })    // the day's chosen slot (free, go, favourites, window, ...) + every slot
-rankSlots(event)                   // { days: [...per-day stats], best }; best = null is "No viable plan yet"
-rankSlots(event, { favourites: false })  // skip the Favourites tie-break
-slotWindow(event.win, day, stats)  // the prototype's display window + dot counts (legacy, see C1)
+viableGroup(day, responses, win, { duration }); // { group: ['Alex', ...], rounds: [{ removed: ['Jess'], reason, failed }] }
+slotStats(day, responses, win, { duration }); // the day's chosen slot (free, go, favourites, window, ...) + every slot
+rankSlots(event); // { days: [...per-day stats], best }; best = null is "No viable plan yet"
+rankSlots(event, { favourites: false }); // skip the Favourites tie-break
+slotWindow(event.win, day, stats); // the prototype's display window + dot counts (legacy, see C1)
 ```
 
 `win` falls back to the day's own `win`; one is required. `rankSlots` uses `day.win ?? event.win` and `event.duration` (default 120).
@@ -22,13 +22,13 @@ Inputs are `Response`, `Slot` and `Condition` in `lib/engine/types.ts`. In the e
 
 Conditions apply only on days answered **If…**, combined with AND; conditions on a Yes day are ignored. If… with no conditions means not free for that day. **No**, Not free, or no answer means not free.
 
-| Condition | Effect |
-|---|---|
-| `{ type: 'requires', people }` | holds when every listed id is viable |
-| `{ type: 'requires_any', people }` | holds when at least one listed id is viable |
-| `{ type: 'min_attendees', n }` | holds when at least `n` people are viable, counting the person |
+| Condition                                        | Effect                                                                                                    |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `{ type: 'requires', people }`                   | holds when every listed id is viable                                                                      |
+| `{ type: 'requires_any', people }`               | holds when at least one listed id is viable                                                               |
+| `{ type: 'min_attendees', n }`                   | holds when at least `n` people are viable, counting the person                                            |
 | `{ type: 'time', earliest_start?, latest_end? }` | clips the person's ranges for the day before merging and coverage; ranges emptied by clipping are dropped |
-| `{ type: 'unresolvable', summary }` | the person can be tentative, never viable |
+| `{ type: 'unresolvable', summary }`              | the person can be tentative, never viable                                                                 |
 
 ## Slots and viability
 
@@ -50,16 +50,16 @@ So a condition is only met by people free for the **same slot**: "if Priya comes
 Both conditions are **monotone**: adding people to a group never makes one of them false. A named person who is present stays present, and a count can only go up. That has two consequences:
 
 1. If two groups are each self-consistent (every member's conditions hold), so is their union. So there is exactly **one largest self-consistent group**.
-2. Elimination never removes anyone in that largest group, because their conditions hold in it and therefore in any bigger group they're part of. So elimination stops exactly there: the **greatest fixed point**. It takes at most *n* rounds, and the result doesn't depend on order.
+2. Elimination never removes anyone in that largest group, because their conditions hold in it and therefore in any bigger group they're part of. So elimination stops exactly there: the **greatest fixed point**. It takes at most _n_ rounds, and the result doesn't depend on order.
 
 This holds separately for every slot, over that slot's free people. The tests check it directly. For events with up to 10 people they enumerate every subset in every slot, confirm the largest consistent one is unique and equals the engine's group, and check the day's chosen slot (2,000 random events, durations 30–180 minutes).
 
 ## Why negative dependencies are excluded
 
-Conditions like "only if Sam *isn't* going", "fewer than 6 of us" or "unless…" are **not monotone**, and they break both properties above:
+Conditions like "only if Sam _isn't_ going", "fewer than 6 of us" or "unless…" are **not monotone**, and they break both properties above:
 
-- *Several answers:* A goes only if B doesn't, and B goes only if A doesn't. {A} and {B} are both consistent, and nothing picks between them.
-- *No answer:* A goes only if A doesn't. No group containing A is consistent, and elimination can flip back and forth.
+- _Several answers:_ A goes only if B doesn't, and B goes only if A doesn't. {A} and {B} are both consistent, and nothing picks between them.
+- _No answer:_ A goes only if A doesn't. No group containing A is consistent, and elimination can flip back and forth.
 
 So the engine never evaluates them: per PRODUCT-RULES §4 a negative condition is stored as `unresolvable`, which makes the person tentative.
 
@@ -69,7 +69,7 @@ A day where nobody would go is never best; if no day has anyone viable, `best` i
 
 1. **Group size**: the most people who would actually go together.
 2. **Tentative**: the most tentative people.
-3. **Favourites**: how many of *that viable group* have a Favourite range covering the slot. `{ favourites: false }` skips this step, both here and when choosing each day's slot.
+3. **Favourites**: how many of _that viable group_ have a Favourite range covering the slot. `{ favourites: false }` skips this step, both here and when choosing each day's slot.
 4. **The earliest start.** Days compare by `iso` date when every day has one, otherwise by event order (mixing the two isn't transitive). Then the slot's start time; after midnight is later than the same evening.
 5. **Creation order**: on a full tie the first day is kept.
 
@@ -103,31 +103,31 @@ Breaking range merging, bridging gaps, counting No as free, ignoring an empty `f
 
 The benchmark ran 10,000 synthetic events, averaging 19 participants (range 8–30) and 10.5 slots (range 7–14). Each event was a full recommendation: viable group and trace for every slot, display window and dots for every slot, and ranking. Measured on an Apple M1 with Node 24.11:
 
-| total | mean | p50 | **p95** | p99 |
-|---|---|---|---|---|
+| total       | mean      | p50      | **p95**        | p99         |
+| ----------- | --------- | -------- | -------------- | ----------- |
 | 0.96–1.15 s | 96–115 µs | 85–94 µs | **180–210 µs** | 0.23–0.5 ms |
 
 Ranges are across three runs, the last one with the Favourites tie-break. The worst single event was 2–5 ms, most likely a garbage-collection pause.
 
 Time-aware viability runs one elimination per segment instead of one per day. On an Apple M3 with Node 20.19, back-to-back runs:
 
-| engine | mean | p95 |
-|---|---|---|
+| engine             | mean       | p95        |
+| ------------------ | ---------- | ---------- |
 | day-level (before) | 103–107 µs | 184–192 µs |
-| time-aware | 243–266 µs | 522–592 µs |
+| time-aware         | 243–266 µs | 522–592 µs |
 
 That is about 2.4× slower, and still well under 1 ms per event at p95.
 
 Fixed-duration slots (default 2 h, the benchmark's events unchanged; 11% of their days have windows shorter than 2 h and so no slots, the rest average 7.8 slots), same machine, back-to-back runs:
 
-| engine | mean | p95 |
-|---|---|---|
+| engine                        | mean       | p95        |
+| ----------------------------- | ---------- | ---------- |
 | time-aware segments (Stage 1) | 244–249 µs | 527–538 µs |
-| fixed-duration slots | 131–141 µs | 267–273 µs |
+| fixed-duration slots          | 131–141 µs | 267–273 µs |
 
 Expanded conditions, same machine, three back-to-back runs each. The generator now produces the new condition types, so the two workloads are not identical:
 
-| engine | mean | p95 |
-|---|---|---|
+| engine                    | mean       | p95        |
+| ------------------------- | ---------- | ---------- |
 | fixed-duration slots (C7) | 126–147 µs | 256–293 µs |
-| expanded conditions (C8) | 117–141 µs | 233–281 µs |
+| expanded conditions (C8)  | 117–141 µs | 233–281 µs |

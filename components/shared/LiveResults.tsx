@@ -41,7 +41,9 @@ export default function LiveResults({ v }: { v: any }) {
       {v.resultsFailed ? (
         <p className="lr-note">
           Results aren't available right now.{' '}
-          <button type="button" className="text-btn text-btn-muted" onClick={v.retryResults}>Try again</button>
+          <button type="button" className="text-btn text-btn-muted" onClick={v.retryResults}>
+            Try again
+          </button>
         </p>
       ) : null}
       {v.resultsEmpty ? <p className="lr-note">No responses yet. Share the link to get responses.</p> : null}
@@ -50,9 +52,13 @@ export default function LiveResults({ v }: { v: any }) {
         <div className="lr-rec">
           <p className="label-red">Best so far</p>
           <p className="rec-time">
-            <span><Words text={v.resultsBestDay} /></span>
-            <span className="comma">,{' '}</span>
-            <span className="t2"><Words text={v.resultsBestTime} start={1} /></span>
+            <span>
+              <Words text={v.resultsBestDay} />
+            </span>
+            <span className="comma">, </span>
+            <span className="t2">
+              <Words text={v.resultsBestTime} start={1} />
+            </span>
           </p>
           <p className="rec-date">{v.resultsBestDate}</p>
           <p className="comp-h rec-viable">{v.resultsBestCount}</p>
@@ -60,14 +66,18 @@ export default function LiveResults({ v }: { v: any }) {
       ) : null}
       {v.resultsRows.length ? (
         <ul className="dotrows lr-rows su-stagger" aria-label="Days compared">
-          {v.resultsRows.map((r: any) => (r.hasBar ? <DotRow key={r.key} r={r} /> : (
-            <li key={r.key} className="dr lr-dr is-dim">
-              <span className="dr-label">
-                <span className="dr-day">{r.day}</span>
-                <span className="dr-time">{r.time}</span>
-              </span>
-            </li>
-          )))}
+          {v.resultsRows.map((r: any) =>
+            r.hasBar ? (
+              <DotRow key={r.key} r={r} />
+            ) : (
+              <li key={r.key} className="dr lr-dr is-dim">
+                <span className="dr-label">
+                  <span className="dr-day">{r.day}</span>
+                  <span className="dr-time">{r.time}</span>
+                </span>
+              </li>
+            ),
+          )}
         </ul>
       ) : null}
       {v.resultsRows.length ? (
@@ -82,7 +92,9 @@ export default function LiveResults({ v }: { v: any }) {
             {v.resultsPeople.map((p: any) => (
               <span key={p.key} className={p.cls} role="img" aria-label={p.aria} tabIndex={0}>
                 <span aria-hidden="true">{p.initial}</span>
-                <span className="av-tip" aria-hidden="true">{p.tip}</span>
+                <span className="av-tip" aria-hidden="true">
+                  {p.tip}
+                </span>
               </span>
             ))}
           </div>

@@ -3,7 +3,11 @@ import { PGlite } from '@electric-sql/pglite';
 import type { Db } from '../db';
 import { setupSchema } from '../schema';
 
-export interface TestDb { db: Db; pg: PGlite; close: () => Promise<void> }
+export interface TestDb {
+  db: Db;
+  pg: PGlite;
+  close: () => Promise<void>;
+}
 
 export async function testDb(withSchema = true): Promise<TestDb> {
   const pg = new PGlite();

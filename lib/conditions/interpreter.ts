@@ -35,7 +35,8 @@ export interface Interpretation {
 }
 
 export type TransportResult = { ok: true; text: string } | { ok: false; category: FailureCategory };
-export type FailureCategory = 'no_key' | 'timeout' | 'http_error' | 'unavailable' | 'truncated' | 'refusal' | 'bad_json' | 'schema' | 'semantic';
+export type FailureCategory =
+  'no_key' | 'timeout' | 'http_error' | 'unavailable' | 'truncated' | 'refusal' | 'bad_json' | 'schema' | 'semantic';
 export type ModelTransport = (req: { system: string; user: string; schema: Record<string, unknown> }) => Promise<TransportResult>;
 
 export const MAX_TEXT_CHARS = 500;
@@ -157,13 +158,19 @@ export function parseClauses(raw: unknown): Clause[] | null {
     for (const p of c.people as unknown[]) {
       if (!isObj(p) || Object.keys(p).length !== 2 || typeof p.name !== 'string' || !strOrNull(p.roster_match)) return null;
     }
-    if (!(c.count === null || Number.isInteger(c.count)) || !(c.includes_self === null || typeof c.includes_self === 'boolean')) return null;
+    if (!(c.count === null || Number.isInteger(c.count)) || !(c.includes_self === null || typeof c.includes_self === 'boolean'))
+      return null;
     if (!strOrNull(c.time) || !strOrNull(c.assumption)) return null;
     if (c.kind === 'enforceable') {
       if (c.type === null || c.reason !== null) return null;
-      if ((c.type === 'requires' || c.type === 'requires_any') && (c.people.length === 0 || c.count !== null || c.time !== null)) return null;
+      if ((c.type === 'requires' || c.type === 'requires_any') && (c.people.length === 0 || c.count !== null || c.time !== null))
+        return null;
       if (c.type === 'min_attendees' && (c.count === null || c.includes_self === null || c.people.length || c.time !== null)) return null;
-      if ((c.type === 'earliest_start' || c.type === 'latest_end') && (typeof c.time !== 'string' || !HHMM.test(c.time) || c.people.length || c.count !== null)) return null;
+      if (
+        (c.type === 'earliest_start' || c.type === 'latest_end') &&
+        (typeof c.time !== 'string' || !HHMM.test(c.time) || c.people.length || c.count !== null)
+      )
+        return null;
     } else if (c.type !== null) {
       return null;
     } else if (c.kind === 'unsupported' && c.reason === null) {
@@ -173,10 +180,24 @@ export function parseClauses(raw: unknown): Clause[] | null {
   return raw.clauses as Clause[];
 }
 
-const spanNorm = (s: string) => s.replace(/[‘’`´]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim().toLowerCase().replace(/^[\s.,;:!?'"-]+|[\s.,;:!?'"-]+$/g, '');
+const spanNorm = (s: string) =>
+  s
+    .replace(/[‘’`´]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/^[\s.,;:!?'"-]+|[\s.,;:!?'"-]+$/g, '');
 
-const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h! * 60 + m!; };
-const clockLabel = (m: number) => { const h = Math.floor(m / 60) % 24; const mm = m % 60; return `${h % 12 || 12}${mm ? `:${String(mm).padStart(2, '0')}` : ''}${h < 12 ? 'am' : 'pm'}`; };
+const toMin = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h! * 60 + m!;
+};
+const clockLabel = (m: number) => {
+  const h = Math.floor(m / 60) % 24;
+  const mm = m % 60;
+  return `${h % 12 || 12}${mm ? `:${String(mm).padStart(2, '0')}` : ''}${h < 12 ? 'am' : 'pm'}`;
+};
 
 /** The day window in linear minutes (end past midnight is +1440, as stored by C8). */
 export function windowOf(ctx: InterpretationContext): { s: number; e: number } {
@@ -196,12 +217,42 @@ export function linearTime(hhmm: string, win: { s: number; e: number }): number 
   return dist(m) <= dist(m + 1440) ? m : m + 1440;
 }
 
-const NOT_A_NAME = new Set(['my', 'his', 'her', 'their', 'our', 'your', 'the', 'a', 'an', 'someone', 'somebody', 'anyone', 'anybody', 'everyone', 'people', 'friend', 'friends']);
+const NOT_A_NAME = new Set([
+  'my',
+  'his',
+  'her',
+  'their',
+  'our',
+  'your',
+  'the',
+  'a',
+  'an',
+  'someone',
+  'somebody',
+  'anyone',
+  'anybody',
+  'everyone',
+  'people',
+  'friend',
+  'friends',
+]);
 const NAME_RE = /^\p{L}[\p{L}' .-]{0,29}$/u;
 
-const quote = (s: string) => { const t = s.replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, ''); return t.charAt(0).toUpperCase() + t.slice(1); };
-const listOf = (names: string[], conj: string) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} ${conj} ${names[names.length - 1]}`);
-const clean = (s: string) => s.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+const quote = (s: string) => {
+  const t = s
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[.\s]+$/, '');
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+const listOf = (names: string[], conj: string) =>
+  names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} ${conj} ${names[names.length - 1]}`;
+const clean = (s: string) =>
+  s
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 240);
 
 /** The confirmation line for one canonical condition (pending names get their own line). */
 export function conditionLine(c: CanonicalCondition): string {
@@ -215,7 +266,9 @@ export function conditionLine(c: CanonicalCondition): string {
     case 'min_attendees':
       return `You'll only count if at least ${c.n} people come, including you.`;
     case 'time':
-      return c.earliest_start !== undefined ? `Only times starting from ${clockLabel(c.earliest_start)}.` : `Only times ending by ${clockLabel(c.latest_end!)}.`;
+      return c.earliest_start !== undefined
+        ? `Only times starting from ${clockLabel(c.earliest_start)}.`
+        : `Only times ending by ${clockLabel(c.latest_end!)}.`;
     case 'unresolvable':
       return `${(c.summary ?? '').replace(/[.\s]+$/, '')}, so you'll show as tentative.`;
   }
@@ -242,7 +295,10 @@ export function mapClauses(ctx: InterpretationContext, raw: unknown): MapResult 
   for (const c of clauses) {
     const span = spanNorm(c.source_text);
     if (!span || !text.includes(span)) return { ok: false, category: 'semantic' };
-    if (c.kind === 'not_a_condition') { notes.push(`Noted: '${quote(c.source_text)}' doesn't change how you're counted.`); continue; }
+    if (c.kind === 'not_a_condition') {
+      notes.push(`Noted: '${quote(c.source_text)}' doesn't change how you're counted.`);
+      continue;
+    }
     if (c.kind === 'unsupported') {
       conditions.push({ type: 'unresolvable', summary: UNSUPPORTED_SUMMARY[c.reason!] });
       lines.push(`'${quote(c.source_text)}' can't be checked, so you'll show as tentative.`);
@@ -256,12 +312,18 @@ export function mapClauses(ctx: InterpretationContext, raw: unknown): MapResult 
         const n = normaliseName(name);
         // Self-reference first: the model's roster excludes the guest, so "Ella" may come back unmatched.
         const match = p.roster_match === null ? undefined : normaliseName(p.roster_match);
-        if (n === self || match === self) { selfRef = true; continue; }
+        if (n === self || match === self) {
+          selfRef = true;
+          continue;
+        }
         if (!NAME_RE.test(name) || NOT_A_NAME.has(n.split(' ')[0]!)) return { ok: false, category: 'semantic' };
         const byMatch = match !== undefined ? ctx.roster.find((r) => normaliseName(r.name) === match) : undefined;
         const byName = ctx.roster.find((r) => normaliseName(r.name) === n);
         const hit = byMatch ?? byName;
-        if (hit && hit.id === ctx.self_id) { selfRef = true; continue; }
+        if (hit && hit.id === ctx.self_id) {
+          selfRef = true;
+          continue;
+        }
         if (hit) {
           if (!people.some((x) => x.id === hit.id)) people.push({ id: hit.id, name: hit.name, pending: false });
           if (normaliseName(hit.name) !== n) extra.push(`You said ${name}; we matched this to ${hit.name}.`);
@@ -285,7 +347,8 @@ export function mapClauses(ctx: InterpretationContext, raw: unknown): MapResult 
     } else {
       const m = linearTime(c.time!, win);
       const cond: CanonicalCondition = c.type === 'earliest_start' ? { type: 'time', earliest_start: m } : { type: 'time', latest_end: m };
-      if (c.type === 'earliest_start') es = es === undefined ? m : Math.max(es, m); else le = le === undefined ? m : Math.min(le, m);
+      if (c.type === 'earliest_start') es = es === undefined ? m : Math.max(es, m);
+      else le = le === undefined ? m : Math.min(le, m);
       conditions.push(cond);
       lines.push(conditionLine(cond));
     }
@@ -322,10 +385,12 @@ export function interpretFallback(ctx: InterpretationContext): Interpretation {
       lines.push(conditionLine(cond), ...people.filter((p) => p.pending).map((p) => pendingLine(p.name)));
     } else if (v.type === 'min_attendees') {
       const cond: CanonicalCondition = { type: 'min_attendees', n: v.n };
-      conditions.push(cond); lines.push(conditionLine(cond));
+      conditions.push(cond);
+      lines.push(conditionLine(cond));
     } else if (v.type === 'unresolvable') {
       const cond: CanonicalCondition = { type: 'unresolvable', summary: v.summary || OFFLINE_TENTATIVE_SUMMARY };
-      conditions.push(cond); lines.push(conditionLine(cond));
+      conditions.push(cond);
+      lines.push(conditionLine(cond));
     }
   }
   return { status: 'ok', source: 'fallback', conditions, lines };
@@ -347,7 +412,10 @@ export function modelInput(ctx: InterpretationContext): string {
  * Interprets condition text: model (when a transport is given) then deterministic validation, else the offline
  * fallback. `failure` reports a safe category only, never text.
  */
-export async function interpretCondition(ctx: InterpretationContext, transport: ModelTransport | null): Promise<Interpretation & { failure?: FailureCategory }> {
+export async function interpretCondition(
+  ctx: InterpretationContext,
+  transport: ModelTransport | null,
+): Promise<Interpretation & { failure?: FailureCategory }> {
   if (!ctx.text.trim()) return { status: 'no_condition', source: 'fallback', conditions: [], lines: [] };
   if (!transport) return { ...interpretFallback(ctx), failure: 'no_key' };
   let res: TransportResult;
@@ -358,7 +426,11 @@ export async function interpretCondition(ctx: InterpretationContext, transport: 
   }
   if ('category' in res) return { ...interpretFallback(ctx), failure: res.category };
   let parsed: unknown;
-  try { parsed = JSON.parse(res.text); } catch { return { ...interpretFallback(ctx), failure: 'bad_json' }; }
+  try {
+    parsed = JSON.parse(res.text);
+  } catch {
+    return { ...interpretFallback(ctx), failure: 'bad_json' };
+  }
   const mapped = mapClauses(ctx, parsed);
   if ('category' in mapped) return { ...interpretFallback(ctx), failure: mapped.category };
   return mapped.value;

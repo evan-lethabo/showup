@@ -23,7 +23,11 @@ export const pendingRef = (normalised: string) => PENDING + normalised;
 export const isPendingRef = (ref: string) => ref.startsWith(PENDING);
 const pendingName = (ref: string) => ref.slice(PENDING.length);
 
-export interface ParticipantRow { id: string; displayName: string; normalisedName: string }
+export interface ParticipantRow {
+  id: string;
+  displayName: string;
+  normalisedName: string;
+}
 
 /**
  * Resolves stored references to participant ids for the engine. A pending name matching a participant who has
@@ -38,7 +42,10 @@ export function resolveRefs(refs: readonly string[], people: readonly Participan
   });
 }
 
-export interface StoredCondition { type: string; payload: Record<string, unknown> }
+export interface StoredCondition {
+  type: string;
+  payload: Record<string, unknown>;
+}
 
 /** A stored payload as an engine Condition (C8 contract: people are ids only). */
 export function toEngineCondition(c: StoredCondition, people: readonly ParticipantRow[]): Condition {
@@ -94,7 +101,12 @@ export async function joinEvent(db: Db, eventId: string, rawName: unknown): Prom
   const id = newId();
   const secret = newToken();
   try {
-    await db.query('INSERT INTO participants (id, event_id, display_name, token_hash) VALUES ($1, $2, $3, $4)', [id, eventId, name.value, hashToken(secret)]);
+    await db.query('INSERT INTO participants (id, event_id, display_name, token_hash) VALUES ($1, $2, $3, $4)', [
+      id,
+      eventId,
+      name.value,
+      hashToken(secret),
+    ]);
   } catch (err) {
     if (pgCode(err) === '23505' && pgConstraint(err) === 'participants_name_unique') return { status: 'name_taken' };
     if (pgCode(err) === '23503') return { status: 'not_found' };
@@ -121,7 +133,11 @@ export async function authenticateGuest(db: Db, eventId: string, credential: unk
 
 // ---- Validation -------------------------------------------------------------------------------------------------
 
-export interface DayWindow { date: string; start: number; end: number }
+export interface DayWindow {
+  date: string;
+  start: number;
+  end: number;
+}
 
 export interface ValidDay {
   date: string;
@@ -164,7 +180,12 @@ function ranges(v: unknown, field: string, win: DayWindow): V<Range[]> {
   return { ok: true, value: merge(out) };
 }
 
-function condition(v: unknown, field: string, self: ParticipantRow, people: readonly ParticipantRow[]): V<{ type: string; payload: Record<string, unknown>; view: ConditionView }> {
+function condition(
+  v: unknown,
+  field: string,
+  self: ParticipantRow,
+  people: readonly ParticipantRow[],
+): V<{ type: string; payload: Record<string, unknown>; view: ConditionView }> {
   if (!isObj(v)) return bad(field, 'That condition is not valid.');
   if (v.source !== 'fallback' && v.source !== 'llm') return bad(field, 'Conditions must be confirmed before saving.');
   switch (v.type) {
@@ -186,19 +207,26 @@ function condition(v: unknown, field: string, self: ParticipantRow, people: read
         } else {
           return bad(field, 'Say who needs to be there.');
         }
-        if (ref === self.id || ref === pendingRef(self.normalisedName)) return bad(field, "A condition can't depend on you coming. If nothing else needs to happen, choose Yes.");
+        if (ref === self.id || ref === pendingRef(self.normalisedName))
+          return bad(field, "A condition can't depend on you coming. If nothing else needs to happen, choose Yes.");
         if (!refs.includes(ref)) refs.push(ref);
       }
       const payload = { type: v.type, people: refs };
       return { ok: true, value: { type: v.type, payload, view: toView({ type: v.type, payload }, people) } };
     }
     case 'min_attendees':
-      if (!isInt(v.n) || v.n < 2 || v.n > MAX_PARTICIPANTS) return bad(field, `The number of people must be between 2 and ${MAX_PARTICIPANTS}.`);
-      return { ok: true, value: { type: 'min_attendees', payload: { type: 'min_attendees', n: v.n }, view: { type: 'min_attendees', n: v.n } } };
+      if (!isInt(v.n) || v.n < 2 || v.n > MAX_PARTICIPANTS)
+        return bad(field, `The number of people must be between 2 and ${MAX_PARTICIPANTS}.`);
+      return {
+        ok: true,
+        value: { type: 'min_attendees', payload: { type: 'min_attendees', n: v.n }, view: { type: 'min_attendees', n: v.n } },
+      };
     case 'time': {
-      const es = v.earliest_start; const le = v.latest_end;
+      const es = v.earliest_start;
+      const le = v.latest_end;
       const okMin = (m: unknown) => m === undefined || (isInt(m) && m >= 0 && m <= 2 * DAY);
-      if ((es === undefined && le === undefined) || !okMin(es) || !okMin(le) || (isInt(es) && isInt(le) && es >= le)) return bad(field, 'That time condition is not valid.');
+      if ((es === undefined && le === undefined) || !okMin(es) || !okMin(le) || (isInt(es) && isInt(le) && es >= le))
+        return bad(field, 'That time condition is not valid.');
       const payload: Record<string, unknown> = { type: 'time' };
       if (es !== undefined) payload.earliest_start = es;
       if (le !== undefined) payload.latest_end = le;
@@ -207,7 +235,10 @@ function condition(v: unknown, field: string, self: ParticipantRow, people: read
     case 'unresolvable': {
       const s = typeof v.summary === 'string' ? v.summary.replace(/\s+/g, ' ').trim() : '';
       if (!s || [...s].length > SUMMARY_MAX || /[\u0000-\u001f\u007f]/.test(s)) return bad(field, 'That condition needs a short summary.');
-      return { ok: true, value: { type: 'unresolvable', payload: { type: 'unresolvable', summary: s }, view: { type: 'unresolvable', summary: s } } };
+      return {
+        ok: true,
+        value: { type: 'unresolvable', payload: { type: 'unresolvable', summary: s }, view: { type: 'unresolvable', summary: s } },
+      };
     }
     default:
       return bad(field, 'That kind of condition is not supported.');
@@ -218,7 +249,12 @@ function condition(v: unknown, field: string, self: ParticipantRow, people: read
  * Validates a whole response against the event's days and participants. Read-backs are regenerated here from the
  * structured result, so what is stored always matches what it means.
  */
-export function validateResponse(body: unknown, days: readonly DayWindow[], self: ParticipantRow, people: readonly ParticipantRow[]): V<ValidDay[]> {
+export function validateResponse(
+  body: unknown,
+  days: readonly DayWindow[],
+  self: ParticipantRow,
+  people: readonly ParticipantRow[],
+): V<ValidDay[]> {
   if (!isObj(body) || !Array.isArray(body.days)) return bad('days', 'Send your response as a list of days.');
   if (body.days.length === 0) return bad('days', 'Mark at least one day, or let us know none of them work.');
   if (body.days.length > days.length) return bad('days', 'Each day can only be answered once.');
@@ -239,16 +275,23 @@ export function validateResponse(body: unknown, days: readonly DayWindow[], self
     const fav = ranges(d.favourite, `${f}.favourite`, win);
     if ('error' in fav) return fav;
     if (w !== 'no' && av.value.length === 0) return bad(`${f}.available`, 'Add the times you could make it.');
-    if (!fav.value.every((r) => av.value.some((a) => a.s <= r.s && r.e <= a.e))) return bad(`${f}.favourite`, 'Favourite times must be inside your available times.');
+    if (!fav.value.every((r) => av.value.some((a) => a.s <= r.s && r.e <= a.e)))
+      return bad(`${f}.favourite`, 'Favourite times must be inside your available times.');
     const rawConds = d.conditions === undefined ? [] : d.conditions;
-    if (!Array.isArray(rawConds) || rawConds.length > MAX_CONDITIONS) return bad(`${f}.conditions`, `Add up to ${MAX_CONDITIONS} conditions per day.`);
+    if (!Array.isArray(rawConds) || rawConds.length > MAX_CONDITIONS)
+      return bad(`${f}.conditions`, `Add up to ${MAX_CONDITIONS} conditions per day.`);
     if (w !== 'if' && rawConds.length) return bad(`${f}.conditions`, 'Conditions only apply to days you answered If….');
     if (w === 'if' && rawConds.length === 0) return bad(`${f}.conditions`, 'Confirm what it depends on, or choose Yes.');
     const conditions: ValidDay['conditions'] = [];
     for (let j = 0; j < rawConds.length; j++) {
       const c = condition(rawConds[j], `${f}.conditions[${j}]`, self, people);
       if ('error' in c) return c;
-      conditions.push({ type: c.value.type, payload: c.value.payload, readback: readback(c.value.view), source: (rawConds[j] as { source: 'llm' | 'fallback' }).source });
+      conditions.push({
+        type: c.value.type,
+        payload: c.value.payload,
+        readback: readback(c.value.view),
+        source: (rawConds[j] as { source: 'llm' | 'fallback' }).source,
+      });
     }
     out.push({ date: win.date, willingness: w, available: av.value, favourite: fav.value, conditions });
   }
@@ -265,7 +308,11 @@ export interface OwnDay {
   conditions: (ConditionView & { readback: string; source: string })[];
 }
 
-export interface OwnResponse { participant: { id: string; name: string }; responded: boolean; days: OwnDay[] }
+export interface OwnResponse {
+  participant: { id: string; name: string };
+  responded: boolean;
+  days: OwnDay[];
+}
 
 export async function eventPeople(db: Db, eventId: string): Promise<ParticipantRow[]> {
   const rows = await db.query<{ id: string; display_name: string; normalised_name: string }>(
@@ -286,7 +333,14 @@ export async function eventDays(db: Db, eventId: string): Promise<DayWindow[]> {
 interface Rows {
   will: { participant_id: string; date: string; value: 'yes' | 'if' | 'no' }[];
   ranges: { participant_id: string; date: string; kind: 'available' | 'favourite'; start_min: number; end_min: number }[];
-  conds: { participant_id: string; date: string; type: string; payload: Record<string, unknown> | string; readback: string; source: string }[];
+  conds: {
+    participant_id: string;
+    date: string;
+    type: string;
+    payload: Record<string, unknown> | string;
+    readback: string;
+    source: string;
+  }[];
 }
 
 async function responseRows(db: Db, eventId: string, participantId: string | null): Promise<Rows> {
@@ -295,8 +349,14 @@ async function responseRows(db: Db, eventId: string, participantId: string | nul
   const d = `to_char(date, 'YYYY-MM-DD') AS date`;
   const [will, rs, conds] = await Promise.all([
     db.query<Rows['will'][number]>(`SELECT participant_id, ${d}, value FROM day_willingness WHERE ${where}`, params),
-    db.query<Rows['ranges'][number]>(`SELECT participant_id, ${d}, kind, start_min, end_min FROM ranges WHERE ${where} ORDER BY start_min`, params),
-    db.query<Rows['conds'][number]>(`SELECT participant_id, ${d}, type, payload, readback, source FROM conditions WHERE ${where} ORDER BY id`, params),
+    db.query<Rows['ranges'][number]>(
+      `SELECT participant_id, ${d}, kind, start_min, end_min FROM ranges WHERE ${where} ORDER BY start_min`,
+      params,
+    ),
+    db.query<Rows['conds'][number]>(
+      `SELECT participant_id, ${d}, type, payload, readback, source FROM conditions WHERE ${where} ORDER BY id`,
+      params,
+    ),
   ]);
   return { will, ranges: rs, conds };
 }
@@ -311,9 +371,15 @@ export async function loadOwnResponse(db: Db, eventId: string, me: ParticipantRo
     .map((w) => ({
       date: w.date,
       willingness: w.value,
-      available: rows.ranges.filter((r) => r.date === w.date && r.kind === 'available').map((r) => ({ start: Number(r.start_min), end: Number(r.end_min) })),
-      favourite: rows.ranges.filter((r) => r.date === w.date && r.kind === 'favourite').map((r) => ({ start: Number(r.start_min), end: Number(r.end_min) })),
-      conditions: rows.conds.filter((c) => c.date === w.date).map((c) => ({ ...toView({ type: c.type, payload: payloadOf(c.payload) }, people), readback: c.readback, source: c.source })),
+      available: rows.ranges
+        .filter((r) => r.date === w.date && r.kind === 'available')
+        .map((r) => ({ start: Number(r.start_min), end: Number(r.end_min) })),
+      favourite: rows.ranges
+        .filter((r) => r.date === w.date && r.kind === 'favourite')
+        .map((r) => ({ start: Number(r.start_min), end: Number(r.end_min) })),
+      conditions: rows.conds
+        .filter((c) => c.date === w.date)
+        .map((c) => ({ ...toView({ type: c.type, payload: payloadOf(c.payload) }, people), readback: c.readback, source: c.source })),
     }));
   return { participant: { id: me.id, name: me.displayName }, responded: days.length > 0, days };
 }
@@ -336,16 +402,35 @@ export async function saveResponse(db: Db, eventId: string, me: ParticipantRow, 
   const multi = (table: string, cols: string[], rows: unknown[][]): Statement | null => {
     if (!rows.length) return null;
     const params: unknown[] = [];
-    const values = rows.map((r) => `(${r.map((x) => { params.push(x); return `$${params.length}`; }).join(', ')})`);
+    const values = rows.map(
+      (r) =>
+        `(${r
+          .map((x) => {
+            params.push(x);
+            return `$${params.length}`;
+          })
+          .join(', ')})`,
+    );
     return { text: `INSERT INTO ${table} (${cols.join(', ')}) VALUES ${values.join(', ')}`, params };
   };
-  const will = multi('day_willingness', ['participant_id', 'event_id', 'date', 'value'], v.value.map((d) => [id, eventId, d.date, d.willingness]));
-  const rs = multi('ranges', ['participant_id', 'event_id', 'date', 'kind', 'start_min', 'end_min'], v.value.flatMap((d) => [
-    ...d.available.map((r) => [id, eventId, d.date, 'available', r.s, r.e]),
-    ...d.favourite.map((r) => [id, eventId, d.date, 'favourite', r.s, r.e]),
-  ]));
-  const cs = multi('conditions', ['participant_id', 'event_id', 'date', 'type', 'payload', 'readback', 'source'], v.value.flatMap((d) =>
-    d.conditions.map((c) => [id, eventId, d.date, c.type, JSON.stringify(c.payload), c.readback, c.source])));
+  const will = multi(
+    'day_willingness',
+    ['participant_id', 'event_id', 'date', 'value'],
+    v.value.map((d) => [id, eventId, d.date, d.willingness]),
+  );
+  const rs = multi(
+    'ranges',
+    ['participant_id', 'event_id', 'date', 'kind', 'start_min', 'end_min'],
+    v.value.flatMap((d) => [
+      ...d.available.map((r) => [id, eventId, d.date, 'available', r.s, r.e]),
+      ...d.favourite.map((r) => [id, eventId, d.date, 'favourite', r.s, r.e]),
+    ]),
+  );
+  const cs = multi(
+    'conditions',
+    ['participant_id', 'event_id', 'date', 'type', 'payload', 'readback', 'source'],
+    v.value.flatMap((d) => d.conditions.map((c) => [id, eventId, d.date, c.type, JSON.stringify(c.payload), c.readback, c.source])),
+  );
   for (const s of [will, rs, cs]) if (s) statements.push(s);
   await db.transaction(statements);
   return { status: 'ok', response: await loadOwnResponse(db, eventId, me) };
@@ -369,7 +454,10 @@ export function toEngineResponses(people: readonly ParticipantRow[], rows: Rows)
     const r: Response = { id: p.id, who: p.displayName, role: 'guest', avail: {}, ranges: {}, will: {}, conds: {}, favs: {} };
     for (const w of mine) {
       const sid = slotIdFor(w.date);
-      const of = (kind: string) => rows.ranges.filter((x) => x.participant_id === p.id && x.date === w.date && x.kind === kind).map((x) => ({ s: Number(x.start_min), e: Number(x.end_min) }));
+      const of = (kind: string) =>
+        rows.ranges
+          .filter((x) => x.participant_id === p.id && x.date === w.date && x.kind === kind)
+          .map((x) => ({ s: Number(x.start_min), e: Number(x.end_min) }));
       const av = of('available');
       const fav = of('favourite');
       r.ranges[sid] = av;

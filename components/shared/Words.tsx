@@ -9,7 +9,9 @@ export default function Words({ text, start = 0 }: { text: string; start?: numbe
       {words.map((w, i) => (
         <span key={i}>
           {i > 0 ? ' ' : null}
-          <span className="su-word" style={{ '--i': start + i } as CSSProperties}>{w}</span>
+          <span className="su-word" style={{ '--i': start + i } as CSSProperties}>
+            {w}
+          </span>
         </span>
       ))}
     </>

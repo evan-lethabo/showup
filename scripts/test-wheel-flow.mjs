@@ -16,7 +16,10 @@ try {
   let up = false;
   for (let i = 0; i < 60 && !up; i++) {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    up = await fetch(base).then(() => true, () => false);
+    up = await fetch(base).then(
+      () => true,
+      () => false,
+    );
   }
   assert(up, 'next start did not come up; run `npm run build` first');
 
@@ -46,19 +49,27 @@ try {
     const posted = [];
     const replies = [
       { status: 400, body: { error: { code: 'invalid_input', field: 'days[0].end', message: 'Server says no.' } } },
-      { status: 201, body: { id: 'AAAAAAAAAAAAAAAA', guestPath: '/e/AAAAAAAAAAAAAAAA', organiserPath: '/e/AAAAAAAAAAAAAAAA/admin?k=test' } },
+      {
+        status: 201,
+        body: { id: 'AAAAAAAAAAAAAAAA', guestPath: '/e/AAAAAAAAAAAAAAAA', organiserPath: '/e/AAAAAAAAAAAAAAAA/admin?k=test' },
+      },
     ];
     await page.route('**/api/events', (route) => {
       posted.push(route.request().postDataJSON());
       const reply = replies[posted.length - 1];
       return route.fulfill({ status: reply.status, contentType: 'application/json', body: JSON.stringify(reply.body) });
     });
-    await page.route('**/e/AAAAAAAAAAAAAAAA/admin?k=test', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<p>organiser</p>' }));
+    await page.route('**/e/AAAAAAAAAAAAAAAA/admin?k=test', (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '<p>organiser</p>' }),
+    );
 
     await page.getByRole('button', { name: 'Create event' }).click();
     await page.getByRole('alert').filter({ hasText: 'Server says no.' }).waitFor();
     const days = posted[0]?.days ?? [];
-    assert(days.length >= 2 && days.every((d) => d.start === 1020 && d.end === 1500), `${width}px posted the wrong window: ${JSON.stringify(days)}`);
+    assert(
+      days.length >= 2 && days.every((d) => d.start === 1020 && d.end === 1500),
+      `${width}px posted the wrong window: ${JSON.stringify(days)}`,
+    );
     await page.getByRole('button', { name: 'Create event' }).click();
     await page.waitForURL('**/e/AAAAAAAAAAAAAAAA/admin?k=test');
     assert(errors.length === 0, `${width}px browser errors on Create:\n${errors.join('\n')}`);
@@ -72,11 +83,19 @@ try {
     await range.click();
     const rangeWheels = page.locator('.range-wheels').first();
     assert(
-      await rangeWheels.locator('.time-picker-field').filter({ hasText: 'From' }).getByRole('spinbutton', { name: 'Hour' }).getAttribute('aria-valuetext') === '5',
+      (await rangeWheels
+        .locator('.time-picker-field')
+        .filter({ hasText: 'From' })
+        .getByRole('spinbutton', { name: 'Hour' })
+        .getAttribute('aria-valuetext')) === '5',
       `${width}px Respond From wheel did not receive the organiser window`,
     );
     assert(
-      await rangeWheels.locator('.time-picker-field').filter({ hasText: 'Until' }).getByRole('spinbutton', { name: 'Hour' }).getAttribute('aria-valuetext') === '12',
+      (await rangeWheels
+        .locator('.time-picker-field')
+        .filter({ hasText: 'Until' })
+        .getByRole('spinbutton', { name: 'Hour' })
+        .getAttribute('aria-valuetext')) === '12',
       `${width}px Respond Until wheel did not convert 1440 to 12am`,
     );
     assert(

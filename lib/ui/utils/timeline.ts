@@ -38,7 +38,11 @@ export function nearestEndpoint(rs: readonly Range[], hit: number): Endpoint {
   rs.forEach((r, i) => {
     const d = hit < r.s ? r.s - hit : hit - r.e;
     const isEnd = hit > r.e;
-    if (d < bestD || (d === bestD && isEnd)) { best = i; bestD = d; bestEnd = isEnd; }
+    if (d < bestD || (d === bestD && isEnd)) {
+      best = i;
+      bestD = d;
+      bestEnd = isEnd;
+    }
   });
   return { idx: best, edge: bestEnd ? 'e' : 's' };
 }
@@ -62,11 +66,13 @@ export function shiftRange(rs: readonly Range[], idx: number, delta: number, win
   const out = rs.map((r) => ({ s: r.s, e: r.e }));
   const r = out[idx];
   if (!r) return out;
-  const prev = out[idx - 1]; const next = out[idx + 1];
+  const prev = out[idx - 1];
+  const next = out[idx + 1];
   const lo = prev ? prev.e + SNAP_MIN : win.s;
   const hi = next ? next.s - SNAP_MIN : win.e;
   const d = Math.max(lo - r.s, Math.min(hi - r.e, Math.round(delta / SNAP_MIN) * SNAP_MIN));
-  r.s += d; r.e += d;
+  r.s += d;
+  r.e += d;
   return out;
 }
 
@@ -78,7 +84,10 @@ export function moveEndpoint(rs: readonly Range[], target: Endpoint, hit: number
   for (const x of out) {
     if (x.e - x.s < MIN_RANGE) {
       if (x.s + MIN_RANGE <= win.e) x.e = x.s + MIN_RANGE;
-      else { x.e = win.e; x.s = win.e - MIN_RANGE; }
+      else {
+        x.e = win.e;
+        x.s = win.e - MIN_RANGE;
+      }
     }
     x.s = Math.max(win.s, x.s);
     x.e = Math.min(win.e, x.e);

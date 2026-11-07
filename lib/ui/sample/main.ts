@@ -10,20 +10,32 @@ import { ResultsMixin } from './components/results';
 import { InviteMixin } from './components/invite';
 import { ProposeSheetMixin } from './components/propose-sheet';
 /* Entry point for Event.dc.html: builds the page's Component class and hands it to standalone-support.js. */
-export var DCMeta = {"showRoster":{"editor":"boolean","default":false,"section":"Prototype"},"$preview":{"width":1440,"height":1500}};
+export var DCMeta = { showRoster: { editor: 'boolean', default: false, section: 'Prototype' }, $preview: { width: 1440, height: 1500 } };
 
 export class Component extends DCLogic {
   constructor(props) {
     super(props);
     var seen = false;
-    try { seen = window.sessionStorage.getItem(DOTS_KEY) === '1'; } catch (e) {}
+    try {
+      seen = window.sessionStorage.getItem(DOTS_KEY) === '1';
+    } catch (e) {}
     this.state = {
-      linkMsg: '', remMsg: '', reminderOpen: false,
-      proposeOpen: false, proposeClosing: false, form: { time: 'sat', deadline: '2026-10-22', min: '4' }, formError: '',
-      proposal: null, grown: seen || reducedMotion(), settled: seen || reducedMotion(), activePerson: null
+      linkMsg: '',
+      remMsg: '',
+      reminderOpen: false,
+      proposeOpen: false,
+      proposeClosing: false,
+      form: { time: 'sat', deadline: '2026-10-22', min: '4' },
+      formError: '',
+      proposal: null,
+      grown: seen || reducedMotion(),
+      settled: seen || reducedMotion(),
+      activePerson: null,
     };
     this.timers = {};
-    this.linkEl = null; this.remEl = null; this.sheetEl = null;
+    this.linkEl = null;
+    this.remEl = null;
+    this.sheetEl = null;
   }
 
   componentDidMount() {
@@ -32,20 +44,31 @@ export class Component extends DCLogic {
     if (!this.state.grown) {
       this.timers.grow = setTimeout(function () {
         self.setState({ grown: true });
-        self.timers.settle = setTimeout(function () { self.setState({ settled: true }); }, 900);
-        try { window.sessionStorage.setItem(DOTS_KEY, '1'); } catch (e) {}
+        self.timers.settle = setTimeout(function () {
+          self.setState({ settled: true });
+        }, 900);
+        try {
+          window.sessionStorage.setItem(DOTS_KEY, '1');
+        } catch (e) {}
       }, 60);
     }
   }
 
-  componentWillUnmount() { var t = this.timers; Object.keys(t).forEach(function (k) { clearTimeout(t[k]); }); }
+  componentWillUnmount() {
+    var t = this.timers;
+    Object.keys(t).forEach(function (k) {
+      clearTimeout(t[k]);
+    });
+  }
 
   componentDidUpdate(prevProps) {
     var prevState = this._prev || this.state;
     this._prev = this.state;
     if (!prevState.proposeOpen && this.state.proposeOpen && this.sheetEl) {
-      try { this.sheetEl.focus({ preventScroll: true }); } catch (e) {}
+      try {
+        this.sheetEl.focus({ preventScroll: true });
+      } catch (e) {}
     }
   }
-  }
+}
 mix(Component, [AppMixin, ResultsMixin, InviteMixin, ProposeSheetMixin]);

@@ -10,14 +10,32 @@ let other: string;
 beforeAll(async () => {
   t = await testDb();
   const base = { organiserName: 'Alex', timezone: 'Europe/London', durationMin: 120 };
-  ev = (await createEvent(t.db, { ...base, title: 'A', days: [{ date: '2030-03-01', start: 1080, end: 1500 }, { date: '2030-03-02', start: 1080, end: 1380 }] })).id;
+  ev = (
+    await createEvent(t.db, {
+      ...base,
+      title: 'A',
+      days: [
+        { date: '2030-03-01', start: 1080, end: 1500 },
+        { date: '2030-03-02', start: 1080, end: 1380 },
+      ],
+    })
+  ).id;
   other = (await createEvent(t.db, { ...base, title: 'B', days: [{ date: '2030-03-01', start: 1080, end: 1380 }] })).id;
 });
-afterAll(async () => { await t.close(); });
+afterAll(async () => {
+  await t.close();
+});
 
 function addParticipant(eventId: string, name: string) {
   const id = newId();
-  return t.db.query('INSERT INTO participants (id, event_id, display_name, token_hash) VALUES ($1, $2, $3, $4) RETURNING id', [id, eventId, name, hashToken(newToken())]).then(() => id);
+  return t.db
+    .query('INSERT INTO participants (id, event_id, display_name, token_hash) VALUES ($1, $2, $3, $4) RETURNING id', [
+      id,
+      eventId,
+      name,
+      hashToken(newToken()),
+    ])
+    .then(() => id);
 }
 
 describe('participant names', () => {
@@ -49,17 +67,31 @@ describe('participant names', () => {
   it('rejects blank names and plaintext tokens', async () => {
     expect((await rejection(addParticipant(ev, '   '))).constraint).toBe('participants_display_name_length');
     expect((await rejection(addParticipant(ev, '\t\n'))).constraint).toBe('participants_display_name_length');
-    const bad = t.db.query('INSERT INTO participants (id, event_id, display_name, token_hash) VALUES ($1, $2, $3, $4)', [newId(), ev, 'Tok', newToken()]);
+    const bad = t.db.query('INSERT INTO participants (id, event_id, display_name, token_hash) VALUES ($1, $2, $3, $4)', [
+      newId(),
+      ev,
+      'Tok',
+      newToken(),
+    ]);
     expect((await rejection(bad)).constraint).toBe('participants_token_hash_format');
   });
 });
 
 describe('ranges, willingness and conditions', () => {
   let p: string;
-  beforeAll(async () => { p = await addParticipant(ev, 'Cleo'); });
+  beforeAll(async () => {
+    p = await addParticipant(ev, 'Cleo');
+  });
 
   const range = (kind: string, s: number, e: number, date = '2030-03-01', eventId = ev, pid = p) =>
-    t.db.query('INSERT INTO ranges (participant_id, event_id, date, kind, start_min, end_min) VALUES ($1, $2, $3, $4, $5, $6)', [pid, eventId, date, kind, s, e]);
+    t.db.query('INSERT INTO ranges (participant_id, event_id, date, kind, start_min, end_min) VALUES ($1, $2, $3, $4, $5, $6)', [
+      pid,
+      eventId,
+      date,
+      kind,
+      s,
+      e,
+    ]);
 
   it('stores ranges as linear minutes, including past midnight', async () => {
     await range('available', 1320, 1500);
@@ -69,7 +101,7 @@ describe('ranges, willingness and conditions', () => {
     expect((await rejection(range('available', 1200, 2900))).constraint).toBe('ranges_minutes');
   });
 
-  it('only accepts ranges on the participant\'s own event and its candidate days', async () => {
+  it("only accepts ranges on the participant's own event and its candidate days", async () => {
     expect((await rejection(range('available', 1100, 1200, '2030-03-09'))).constraint).toBe('ranges_day_fk');
     expect((await rejection(range('available', 1100, 1200, '2030-03-01', other))).constraint).toBe('ranges_participant_fk');
   });
@@ -84,8 +116,10 @@ describe('ranges, willingness and conditions', () => {
   });
 
   const cond = (payload: object, source = 'llm', readback = 'You will come if Sam comes.') =>
-    t.db.query('INSERT INTO conditions (participant_id, event_id, date, type, payload, readback, source) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [p, ev, '2030-03-01', (payload as { type?: string }).type ?? 'requires', JSON.stringify(payload), readback, source]);
+    t.db.query(
+      'INSERT INTO conditions (participant_id, event_id, date, type, payload, readback, source) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [p, ev, '2030-03-01', (payload as { type?: string }).type ?? 'requires', JSON.stringify(payload), readback, source],
+    );
 
   it('accepts every canonical condition type, referring to people by id', async () => {
     const sam = newId();
@@ -111,12 +145,16 @@ describe('ranges, willingness and conditions', () => {
     expect((await rejection(cond({ type: 'time', latest_end: '10pm' }))).constraint).toBe(shape);
     expect((await rejection(cond({ type: 'unresolvable', summary: '  ' }))).constraint).toBe(shape);
     expect((await rejection(cond({ type: 'person', name: 'Sam' }))).code).toBe('23514');
-    expect((await rejection(cond({ type: 'requires', people: ['x'] }, 'regex')))).toMatchObject({ constraint: 'conditions_source' });
-    expect((await rejection(cond({ type: 'requires', people: ['x'] }, 'llm', ' ')))).toMatchObject({ constraint: 'conditions_readback_length' });
+    expect(await rejection(cond({ type: 'requires', people: ['x'] }, 'regex'))).toMatchObject({ constraint: 'conditions_source' });
+    expect(await rejection(cond({ type: 'requires', people: ['x'] }, 'llm', ' '))).toMatchObject({
+      constraint: 'conditions_readback_length',
+    });
   });
 
   it('has no column for raw condition text', async () => {
-    const cols = await t.db.query<{ column_name: string }>(`SELECT column_name FROM information_schema.columns WHERE table_name = 'conditions' ORDER BY ordinal_position`);
+    const cols = await t.db.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'conditions' ORDER BY ordinal_position`,
+    );
     expect(cols.map((c) => c.column_name)).toEqual(['id', 'participant_id', 'event_id', 'date', 'type', 'payload', 'readback', 'source']);
   });
 });

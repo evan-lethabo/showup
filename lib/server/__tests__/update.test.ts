@@ -8,14 +8,29 @@ const NOW = new Date('2030-01-01T00:00:00Z');
 const d1 = { date: '2030-08-01', start: 1080, end: 1380 };
 const d2 = { date: '2030-08-02', start: 1080, end: 1380 };
 const base = { title: 'Plans', organiserName: 'Org', timezone: 'Australia/Sydney', durationMin: 120, days: [d1, d2] };
-const answer = { days: [d1, d2].map((d) => ({ date: d.date, willingness: 'yes', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] })) };
+const answer = {
+  days: [d1, d2].map((d) => ({ date: d.date, willingness: 'yes', available: [{ start: 1140, end: 1320 }], favourite: [], conditions: [] })),
+};
 
 let t: TestDb;
-beforeAll(async () => { t = await testDb(); });
-afterAll(async () => { await t.close(); });
+beforeAll(async () => {
+  t = await testDb();
+});
+afterAll(async () => {
+  await t.close();
+});
 
 const patch = (id: string, body: unknown, cred?: string) =>
-  handleUpdateEvent(id, new Request('http://x/api', { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...(cred ? { Authorization: `Bearer ${cred}` } : {}) }, body: JSON.stringify(body) }), () => t.db, NOW);
+  handleUpdateEvent(
+    id,
+    new Request('http://x/api', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(cred ? { Authorization: `Bearer ${cred}` } : {}) },
+      body: JSON.stringify(body),
+    }),
+    () => t.db,
+    NOW,
+  );
 
 async function withGuest() {
   const { id, token } = await createEvent(t.db, base);
@@ -36,7 +51,7 @@ describe('edit event (organiser)', () => {
     expect((await patch('AAAAAAAAAAAAAAAA', base, 'x')).status).toBe(404);
   });
 
-  it('a new title or name keeps everyone\'s answers', async () => {
+  it("a new title or name keeps everyone's answers", async () => {
     const { id, token } = await withGuest();
     const res = await patch(id, { ...base, title: 'Renamed', organiserName: 'Boss' }, token);
     expect(await res.json()).toEqual({ ok: true, scheduleChanged: false });
@@ -72,7 +87,16 @@ describe('edit event (organiser)', () => {
     expect((await patch(id, { ...base, days: [{ date: '2029-12-01', start: 600, end: 900 }] }, token)).status).toBe(400);
     expect((await patch(id, { ...base, title: ' ' }, token)).status).toBe(400);
     const late = new Date('2030-08-01T12:00:00Z');
-    const res = await handleUpdateEvent(id, new Request('http://x', { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ ...base, timezone: 'UTC', title: 'Later' }) }), () => t.db, late);
+    const res = await handleUpdateEvent(
+      id,
+      new Request('http://x', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...base, timezone: 'UTC', title: 'Later' }),
+      }),
+      () => t.db,
+      late,
+    );
     expect(res.status).toBe(200);
     expect(await getPublicEvent(t.db, id)).toMatchObject({ title: 'Later', timezone: 'Australia/Sydney' });
   });

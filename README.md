@@ -29,19 +29,19 @@ npm run test:server  # strict typecheck + server tests against an in-memory Post
 
 `db:setup` stops without changing anything if an existing table doesn't match the expected schema. Local, Preview and Production currently share one database.
 
-| API route | |
-|---|---|
-| `GET /api/health` | `{"ok":true}` (200) if `SELECT 1` succeeds, else `{"ok":false}` (503) |
-| `POST /api/events` | Creates an event and its days. 201 `{id, guestPath, organiserPath}`; 400 `{error:{code, message, field}}` |
-| `GET /api/events/{id}` | The public event (title, organiser name, duration, timezone, days); 404 if unknown |
+| API route              |                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------- |
+| `GET /api/health`      | `{"ok":true}` (200) if `SELECT 1` succeeds, else `{"ok":false}` (503)                                     |
+| `POST /api/events`     | Creates an event and its days. 201 `{id, guestPath, organiserPath}`; 400 `{error:{code, message, field}}` |
+| `GET /api/events/{id}` | The public event (title, organiser name, duration, timezone, days); 404 if unknown                        |
 
-| Route | What it is |
-|---|---|
-| `/` | The whole flow: Landing → Create → Respond → Event, plus Join, the conditions sheet and the propose sheet. It's one state machine, so screens change without changing the URL. |
-| `/example` | Sample event page with fixed, fictional responses ("See an example") |
-| `/preview/create` · `respond` · `fresh` · `join` · `guest` · `participant` | The flow opened at a seeded start screen (the old canvas boards). Unknown values return 404. |
-| `/e/{id}` | Guest link for a stored event |
-| `/e/{id}/admin?k={token}` | Organiser link; 404 unless the token matches. Sent with `Referrer-Policy: no-referrer` |
+| Route                                                                      | What it is                                                                                                                                                                     |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`                                                                        | The whole flow: Landing → Create → Respond → Event, plus Join, the conditions sheet and the propose sheet. It's one state machine, so screens change without changing the URL. |
+| `/example`                                                                 | Sample event page with fixed, fictional responses ("See an example")                                                                                                           |
+| `/preview/create` · `respond` · `fresh` · `join` · `guest` · `participant` | The flow opened at a seeded start screen (the old canvas boards). Unknown values return 404.                                                                                   |
+| `/e/{id}`                                                                  | Guest link for a stored event                                                                                                                                                  |
+| `/e/{id}/admin?k={token}`                                                  | Organiser link; 404 unless the token matches. Sent with `Referrer-Policy: no-referrer`                                                                                         |
 
 Links between `/` and `/example` are deliberately plain `<a href>`, not `next/link`. The two pages' CSS defines some of the same selectors differently, and a full page load keeps them apart (see `app/(flow)/layout.tsx`).
 
@@ -85,14 +85,14 @@ docs/archive/MIGRATION_AUDIT.md  how the old code was audited and mapped to this
 
 **Still simulated in the frontend.** The backend will replace these. `docs/BACKEND_REQUIREMENTS.md` lists what has to be decided first.
 
-| Simulated | Where |
-|---|---|
-| Responses (and prototype events) are stored in `localStorage` on one device | `lib/ui/services/storage.ts` |
-| Condition "AI" is a regex parser | `lib/ui/utils/conditions-parser.ts` |
-| Best-time calculation | `lib/ui/utils/recommend.ts` |
-| Fake 700 ms save; fixed invite link and QR code on prototype events | `lib/ui/flow/respond.ts`, `lib/ui/config.ts`, `components/flow/screens/EventPage.tsx` |
-| Demo fixtures (Alex, Jess, the 8-person sample) | `lib/ui/data/fixtures.ts`, `lib/ui/sample/constants.ts` |
-| Recommendation UI still uses the characterised legacy ranking policy | `lib/ui/utils/recommend.ts` |
+| Simulated                                                                   | Where                                                                                 |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Responses (and prototype events) are stored in `localStorage` on one device | `lib/ui/services/storage.ts`                                                          |
+| Condition "AI" is a regex parser                                            | `lib/ui/utils/conditions-parser.ts`                                                   |
+| Best-time calculation                                                       | `lib/ui/utils/recommend.ts`                                                           |
+| Fake 700 ms save; fixed invite link and QR code on prototype events         | `lib/ui/flow/respond.ts`, `lib/ui/config.ts`, `components/flow/screens/EventPage.tsx` |
+| Demo fixtures (Alex, Jess, the 8-person sample)                             | `lib/ui/data/fixtures.ts`, `lib/ui/sample/constants.ts`                               |
+| Recommendation UI still uses the characterised legacy ranking policy        | `lib/ui/utils/recommend.ts`                                                           |
 
 **Empty placeholders:** `lib/supabase/`.
 

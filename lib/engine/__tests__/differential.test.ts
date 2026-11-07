@@ -21,23 +21,29 @@ function legacy(ev: EventData): any {
   return {
     ...ev,
     responses: ev.responses.map((r) => {
-      const will: Record<string, unknown> = {}, conds: Record<string, unknown> = {};
+      const will: Record<string, unknown> = {},
+        conds: Record<string, unknown> = {};
       for (const sl of ev.slots) {
         const cs = r.conds[sl.id] || [];
         if (sl.id in r.will) will[sl.id] = r.will[sl.id] === 'if' && !cs.length ? 'no' : r.will[sl.id];
         conds[sl.id] = cs.flatMap((c): object[] =>
-          c.type === 'requires' ? c.people.map((p) => ({ type: 'person', name: nameOf.get(p) ?? p }))
-            : c.type === 'min_attendees' ? [{ type: 'min', n: String(c.n) }] : []);
+          c.type === 'requires'
+            ? c.people.map((p) => ({ type: 'person', name: nameOf.get(p) ?? p }))
+            : c.type === 'min_attendees'
+              ? [{ type: 'min', n: String(c.n) }]
+              : [],
+        );
       }
       return { ...r, will, conds };
-    })
+    }),
   };
 }
 const whoOf = (ev: EventData) => new Map(ev.responses.map((r) => [r.id, r.who]));
 
 /** Every answered day gets the whole organiser window as its only range, and one slot spans the window. */
 function wholeWindow(ev: EventData): EventData {
-  for (const r of ev.responses) for (const sl of ev.slots) if (r.avail[sl.id] !== undefined) r.ranges[sl.id] = [{ s: ev.win.s, e: ev.win.e }];
+  for (const r of ev.responses)
+    for (const sl of ev.slots) if (r.avail[sl.id] !== undefined) r.ranges[sl.id] = [{ s: ev.win.s, e: ev.win.e }];
   ev.duration = ev.win.e - ev.win.s;
   return ev;
 }
@@ -45,17 +51,25 @@ function wholeWindow(ev: EventData): EventData {
 describe('differential: recommend.ts vs engine', () => {
   it('1,000 random events, everyone free for the whole window: identical groups and counts', () => {
     const rand = rng(20261018);
-    let slotsChecked = 0, eliminations = 0;
+    let slotsChecked = 0,
+      eliminations = 0;
     for (let i = 0; i < 1000; i++) {
       const ev = wholeWindow(randomEvent(rand, GROUP_ONLY));
       const lv = legacy(ev);
       const who = whoOf(ev);
       for (const d of rankSlots(ev).days) {
         const o: any = old.dayStats(lv, d.slot.id); // untyped original (@ts-nocheck)
-        const willing = lv.responses.filter((x: any) => (x.avail[d.slot.id] || 0) > 0 && (x.will[d.slot.id] === 'yes' || x.will[d.slot.id] === 'if')).length;
+        const willing = lv.responses.filter(
+          (x: any) => (x.avail[d.slot.id] || 0) > 0 && (x.will[d.slot.id] === 'yes' || x.will[d.slot.id] === 'if'),
+        ).length;
         expect(d.slots).toHaveLength(1);
-        expect({ event: i, slot: d.slot.id, free: d.free, go: d.go, group: d.group.map((id) => who.get(id)) })
-          .toEqual({ event: i, slot: d.slot.id, free: willing, go: o.go, group: o.viable.map((x: any) => x.who) });
+        expect({ event: i, slot: d.slot.id, free: d.free, go: d.go, group: d.group.map((id) => who.get(id)) }).toEqual({
+          event: i,
+          slot: d.slot.id,
+          free: willing,
+          go: o.go,
+          group: o.viable.map((x: any) => x.who),
+        });
         if (d.rounds.length) eliminations++;
       }
       slotsChecked += ev.slots.length;
@@ -91,8 +105,11 @@ describe('differential: recommend.ts vs engine', () => {
         // dayDots uses everyone marked free that day, not the slot's free list.
         const dayFree = ev.responses.filter((r) => (r.avail[d.slot.id] || 0) > 0);
         const w = slotWindow(ev.win, d.slot, { viable: d.viable, freeList: dayFree });
-        expect({ time: w.window ? fmtCompact(w.window.s, w.window.e) : '', free: w.free, go: w.go })
-          .toEqual({ time: dd.time, free: dd.free, go: dd.go });
+        expect({ time: w.window ? fmtCompact(w.window.s, w.window.e) : '', free: w.free, go: w.go }).toEqual({
+          time: dd.time,
+          free: dd.free,
+          go: dd.go,
+        });
         expect(bestWindow(ev.win, d.slot.id, d.viable)).toEqual(old.bestWindow(lv, d.slot.id, d.viable));
       }
     }

@@ -3,7 +3,11 @@ import type { Db, Statement } from './db';
 import { hashToken, ID_PATTERN, newId, newToken, tokenMatches } from './credentials';
 import type { CreateEventInput } from './validate';
 
-export interface PublicEventDay { date: string; start: number; end: number }
+export interface PublicEventDay {
+  date: string;
+  start: number;
+  end: number;
+}
 
 /** Everything a guest may see about an event. */
 export interface PublicEvent {
@@ -51,9 +55,15 @@ export async function createEvent(db: Db, input: CreateEventInput): Promise<{ id
 }
 
 /** Whether two events offer guests different choices: the days, any day's window, or the event length. */
-function sameSchedule(a: { durationMin: number | null; days: PublicEventDay[] }, b: { durationMin: number | null; days: PublicEventDay[] }): boolean {
-  return a.durationMin === b.durationMin && a.days.length === b.days.length &&
-    a.days.every((d, i) => d.date === b.days[i]!.date && d.start === b.days[i]!.start && d.end === b.days[i]!.end);
+function sameSchedule(
+  a: { durationMin: number | null; days: PublicEventDay[] },
+  b: { durationMin: number | null; days: PublicEventDay[] },
+): boolean {
+  return (
+    a.durationMin === b.durationMin &&
+    a.days.length === b.days.length &&
+    a.days.every((d, i) => d.date === b.days[i]!.date && d.start === b.days[i]!.start && d.end === b.days[i]!.end)
+  );
 }
 
 /**
@@ -64,7 +74,10 @@ function sameSchedule(a: { durationMin: number | null; days: PublicEventDay[] },
 export async function updateEvent(db: Db, current: PublicEvent, input: CreateEventInput): Promise<{ scheduleChanged: boolean }> {
   const scheduleChanged = !sameSchedule(current, input);
   const statements: Statement[] = [
-    { text: 'UPDATE events SET title = $2, organiser_name = $3, duration_min = $4 WHERE id = $1', params: [current.id, input.title, input.organiserName, input.durationMin] },
+    {
+      text: 'UPDATE events SET title = $2, organiser_name = $3, duration_min = $4 WHERE id = $1',
+      params: [current.id, input.title, input.organiserName, input.durationMin],
+    },
   ];
   if (scheduleChanged) {
     const values: string[] = [];
@@ -134,10 +147,7 @@ export async function getPublicEvent(db: Db, id: string): Promise<PublicEvent | 
   return (await loadEvent(db, id))?.event ?? null;
 }
 
-export type OrganiserAccess =
-  | { status: 'ok'; event: PublicEvent }
-  | { status: 'not_found' }
-  | { status: 'forbidden' };
+export type OrganiserAccess = { status: 'ok'; event: PublicEvent } | { status: 'not_found' } | { status: 'forbidden' };
 
 /** Server-side gate for every organiser-only read or action. */
 export async function authoriseOrganiser(db: Db, id: string, token: unknown): Promise<OrganiserAccess> {

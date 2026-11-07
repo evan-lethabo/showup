@@ -17,7 +17,9 @@ export default function Respond({ v }: { v: any }) {
           <div className="col-intro">
             {v.editingResponse ? (
               <>
-                <button type="button" className="text-btn back-link" onClick={v.backToEvent}>Back to event</button>
+                <button type="button" className="text-btn back-link" onClick={v.backToEvent}>
+                  Back to event
+                </button>
               </>
             ) : null}
             <p className="kicker vt-title">{v.eventName}</p>
@@ -26,10 +28,14 @@ export default function Respond({ v }: { v: any }) {
                 <p className="eyebrow s-head">Start with yours.</p>
               </>
             ) : null}
-            <h1 className="display s-head" tabIndex={-1} ref={v.setHeadingEl}>Which times work for you?</h1>
+            <h1 className="display s-head" tabIndex={-1} ref={v.setHeadingEl}>
+              Which times work for you?
+            </h1>
           </div>
           <section className="col-main s-body" aria-label="Candidate days">
-            <p className="sr" aria-live="polite">{v.liveMsg}</p>
+            <p className="sr" aria-live="polite">
+              {v.liveMsg}
+            </p>
             <div className="days">
               {(v.slots || []).map((d: any, $index: number) => (
                 <Fragment key={$index}>
@@ -44,15 +50,31 @@ export default function Respond({ v }: { v: any }) {
                           <span className="t-silver glass-silver" />
                           <span className="t-red glass-red" />
                         </span>
-                        <button type="button" className={d.notFreeCls} aria-pressed={d.notFreePressed} onClick={d.setNotFree} ref={d.setEl}>Not free</button>
-                        <button type="button" className={d.freeCls} aria-pressed={d.freePressed} onClick={d.setFree}>Free</button>
-                        <button type="button" className={d.favCls} aria-pressed={d.favPressed} onClick={d.setFav}>Favourite</button>
+                        <button type="button" className={d.notFreeCls} aria-pressed={d.notFreePressed} onClick={d.setNotFree} ref={d.setEl}>
+                          Not free
+                        </button>
+                        <button type="button" className={d.freeCls} aria-pressed={d.freePressed} onClick={d.setFree}>
+                          Free
+                        </button>
+                        <button type="button" className={d.favCls} aria-pressed={d.favPressed} onClick={d.setFav}>
+                          Favourite
+                        </button>
                       </div>
                     </div>
                     <div className={d.revealCls}>
                       <div className="reveal-inner">
                         <div className="reveal-body">
-                          <button type="button" className={d.barCls} onClick={d.tapBar} onPointerDown={d.barDown} onPointerMove={d.barMove} onPointerUp={d.barUp} onPointerCancel={d.barCancel} onLostPointerCapture={d.barUp} aria-label={d.barAria}>
+                          <button
+                            type="button"
+                            className={d.barCls}
+                            onClick={d.tapBar}
+                            onPointerDown={d.barDown}
+                            onPointerMove={d.barMove}
+                            onPointerUp={d.barUp}
+                            onPointerCancel={d.barCancel}
+                            onLostPointerCapture={d.barUp}
+                            aria-label={d.barAria}
+                          >
                             <span className="tl-track">
                               {(d.fills || []).map((f: any, $index: number) => (
                                 <Fragment key={$index}>
@@ -63,7 +85,9 @@ export default function Respond({ v }: { v: any }) {
                             <span className="tl-hours" aria-hidden="true">
                               {(d.ticks || []).map((t: any, $index: number) => (
                                 <Fragment key={$index}>
-                                  <span className={t.cls} style={{ left: `${t.left}%` }}>{t.label}</span>
+                                  <span className={t.cls} style={{ left: `${t.left}%` }}>
+                                    {t.label}
+                                  </span>
                                 </Fragment>
                               ))}
                             </span>
@@ -72,10 +96,20 @@ export default function Respond({ v }: { v: any }) {
                             {(d.ranges || []).map((r: any, $index: number) => (
                               <Fragment key={$index}>
                                 <div className="range-row">
-                                  <button type="button" className="range-label glass-control" aria-expanded={r.expanded} aria-label={r.aria} onClick={r.toggleWheels}>{r.label}</button>
+                                  <button
+                                    type="button"
+                                    className="range-label glass-control"
+                                    aria-expanded={r.expanded}
+                                    aria-label={r.aria}
+                                    onClick={r.toggleWheels}
+                                  >
+                                    {r.label}
+                                  </button>
                                   {r.canRemove ? (
                                     <>
-                                      <button type="button" className="text-btn add-range" onClick={r.remove}>Remove</button>
+                                      <button type="button" className="text-btn add-range" onClick={r.remove}>
+                                        Remove
+                                      </button>
                                     </>
                                   ) : null}
                                 </div>
@@ -83,7 +117,9 @@ export default function Respond({ v }: { v: any }) {
                                   <>
                                     <div className="range-wheels">
                                       <TimeWheels wheels={r.wheels} />
-                                      <button type="button" className="text-btn wheel-done" onClick={r.toggleWheels}>Done</button>
+                                      <button type="button" className="text-btn wheel-done" onClick={r.toggleWheels}>
+                                        Done
+                                      </button>
                                     </div>
                                   </>
                                 ) : null}
@@ -91,20 +127,30 @@ export default function Respond({ v }: { v: any }) {
                             ))}
                             {d.canAddRange ? (
                               <>
-                                <button type="button" className="text-btn add-range" onClick={d.addRange}>Add another time</button>
+                                <button type="button" className="text-btn add-range" onClick={d.addRange}>
+                                  Add another time
+                                </button>
                               </>
                             ) : null}
                           </div>
                           <div className="will-row">
-                            <p className="will-q" id={d.qId}>Would you actually go?</p>
+                            <p className="will-q" id={d.qId}>
+                              Would you actually go?
+                            </p>
                             <div className="seg glass-control" role="group" aria-labelledby={d.qId}>
                               <span className={d.willThumbCls} style={{ transform: `translateX(${d.willThumbX}%)` }} aria-hidden="true">
                                 <span className="t-silver glass-silver" />
                                 <span className="t-red glass-red" />
                               </span>
-                              <button type="button" className={d.yesCls} aria-pressed={d.yesPressed} onClick={d.pickYes}>Yes</button>
-                              <button type="button" className={d.ifCls} aria-pressed={d.ifPressed} onClick={d.pickIf}>If…</button>
-                              <button type="button" className={d.noCls} aria-pressed={d.noPressed} onClick={d.pickNo}>No</button>
+                              <button type="button" className={d.yesCls} aria-pressed={d.yesPressed} onClick={d.pickYes}>
+                                Yes
+                              </button>
+                              <button type="button" className={d.ifCls} aria-pressed={d.ifPressed} onClick={d.pickIf}>
+                                If…
+                              </button>
+                              <button type="button" className={d.noCls} aria-pressed={d.noPressed} onClick={d.pickNo}>
+                                No
+                              </button>
                             </div>
                           </div>
                           {d.showError ? (
@@ -116,20 +162,26 @@ export default function Respond({ v }: { v: any }) {
                             <>
                               <div className="cond-sum">
                                 <p className="cond-text">
-                                  <span className="label">Only you see this:{' '}</span>
+                                  <span className="label">Only you see this: </span>
                                   {d.condText}
                                 </p>
                                 <div className="cond-actions">
-                                  <button type="button" className="text-btn" onClick={d.editConds}>Edit</button>
+                                  <button type="button" className="text-btn" onClick={d.editConds}>
+                                    Edit
+                                  </button>
                                   {d.canReuse ? (
                                     <>
-                                      <button type="button" className="text-btn" onClick={d.reuse}>Use this for my other times too</button>
+                                      <button type="button" className="text-btn" onClick={d.reuse}>
+                                        Use this for my other times too
+                                      </button>
                                     </>
                                   ) : null}
                                 </div>
                                 {d.hasApplied ? (
                                   <>
-                                    <p className="small" role="status">{d.appliedNote}</p>
+                                    <p className="small" role="status">
+                                      {d.appliedNote}
+                                    </p>
                                   </>
                                 ) : null}
                               </div>
@@ -147,22 +199,30 @@ export default function Respond({ v }: { v: any }) {
                 <>
                   <div className="none-note" role="status">
                     <p>You're letting the organiser know none of these times work.</p>
-                    <button type="button" className="text-btn" onClick={v.undoNone}>Undo</button>
+                    <button type="button" className="text-btn" onClick={v.undoNone}>
+                      Undo
+                    </button>
                   </div>
                 </>
               ) : null}
               {v.hasFormError ? (
                 <>
-                  <p className="form-error" role="alert">{v.formError}</p>
+                  <p className="form-error" role="alert">
+                    {v.formError}
+                  </p>
                 </>
               ) : null}
               {v.showSubmitRow ? (
                 <>
                   <div className="btn-row">
-                    <button type="button" className="btn btn-primary" onClick={v.submit} disabled={v.saving} aria-busy={v.savingStr}>{v.submitLabel}</button>
+                    <button type="button" className="btn btn-primary" onClick={v.submit} disabled={v.saving} aria-busy={v.savingStr}>
+                      {v.submitLabel}
+                    </button>
                     {v.showNoneBtn ? (
                       <>
-                        <button type="button" className="text-btn" onClick={v.markNone}>None of these work for me</button>
+                        <button type="button" className="text-btn" onClick={v.markNone}>
+                          None of these work for me
+                        </button>
                       </>
                     ) : null}
                   </div>
@@ -177,25 +237,35 @@ export default function Respond({ v }: { v: any }) {
                 <>
                   <div className="saved" role="status">
                     <p className="label-red">Saved</p>
-                    <h2 className="section-h" tabIndex={-1} ref={v.setSavedEl}>Your response is in.</h2>
+                    <h2 className="section-h" tabIndex={-1} ref={v.setSavedEl}>
+                      Your response is in.
+                    </h2>
                     <p>{v.savedSummary}</p>
                     <div className="btn-row">
                       {v.isPersisted ? (
                         <>
-                          <button type="button" className="btn btn-primary" onClick={v.backToEventSaved}>Back to event</button>
+                          <button type="button" className="btn btn-primary" onClick={v.backToEventSaved}>
+                            Back to event
+                          </button>
                         </>
                       ) : (
                         <>
                           {/* Plain <a>, not next/link: a full page load keeps Main's and Event's CSS apart. */}
                           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-                          <a className="btn btn-primary" href="/example" onClick={v.saveForReturn}>Continue to event</a>
+                          <a className="btn btn-primary" href="/example" onClick={v.saveForReturn}>
+                            Continue to event
+                          </a>
                         </>
                       )}
-                      <button type="button" className="btn btn-secondary" onClick={v.editResponse}>Edit response</button>
+                      <button type="button" className="btn btn-secondary" onClick={v.editResponse}>
+                        Edit response
+                      </button>
                     </div>
                     {v.isPersisted ? null : (
                       <>
-                        <p className="small">Prototype: the event page shows a fixed sample with fictional responses. Your answers here don't change it.</p>
+                        <p className="small">
+                          Prototype: the event page shows a fixed sample with fictional responses. Your answers here don't change it.
+                        </p>
                       </>
                     )}
                   </div>
@@ -205,14 +275,20 @@ export default function Respond({ v }: { v: any }) {
                 <div className="none-note">
                   <p role="alert">Discard your unsaved changes?</p>
                   <div className="btn-row">
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={v.cancelSwitch}>Cancel</button>
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={v.discardSwitch}>Discard</button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={v.cancelSwitch}>
+                      Cancel
+                    </button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={v.discardSwitch}>
+                      Discard
+                    </button>
                   </div>
                 </div>
               ) : null}
               {v.canSwitchGuest && !v.confirmSwitch ? (
                 <div>
-                  <button type="button" className="text-btn text-btn-muted" onClick={v.switchGuest}>{v.switchLabel}</button>
+                  <button type="button" className="text-btn text-btn-muted" onClick={v.switchGuest}>
+                    {v.switchLabel}
+                  </button>
                 </div>
               ) : null}
             </div>

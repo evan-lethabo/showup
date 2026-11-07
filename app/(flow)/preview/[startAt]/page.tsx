@@ -8,7 +8,7 @@ const STARTS: Record<string, string> = {
   fresh: 'Your event — showup.',
   join: 'Join — showup.',
   guest: 'Event, guest view — showup.',
-  participant: 'Respond, participant — showup.'
+  participant: 'Respond, participant — showup.',
 };
 
 export const dynamicParams = false; // unknown values → 404

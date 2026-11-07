@@ -12,12 +12,27 @@ interface StoredEvent {
   participants?: { name: string; responded: boolean }[];
 }
 
-export interface EventLinks { guestPath: string; organiserPath?: string }
+export interface EventLinks {
+  guestPath: string;
+  organiserPath?: string;
+}
 
-interface FlowSlot { id: string; iso: string; day: string; title: string; short: string; win: { s: number; e: number } }
+interface FlowSlot {
+  id: string;
+  iso: string;
+  day: string;
+  title: string;
+  short: string;
+  win: { s: number; e: number };
+}
 
 /** Changes whenever the organiser edits the title, name, length or schedule. The results API sends the same string, so open pages can spot an edit. */
-export function eventRev(e: { title: string; organiserName: string; durationMin: number | null; days: { date: string; start: number; end: number }[] }): string {
+export function eventRev(e: {
+  title: string;
+  organiserName: string;
+  durationMin: number | null;
+  days: { date: string; start: number; end: number }[];
+}): string {
   return JSON.stringify([e.title, e.organiserName, e.durationMin, e.days.map((d) => [d.date, d.start, d.end])]);
 }
 

@@ -18,7 +18,9 @@ export default function EventError({ retry }: { error: Error; retry: () => void 
             <p className="j-org s-head">Try again in a moment.</p>
             <div className="j-form s-body">
               <div>
-                <button type="button" className="btn btn-primary" onClick={() => retry()}>Try again</button>
+                <button type="button" className="btn btn-primary" onClick={() => retry()}>
+                  Try again
+                </button>
               </div>
             </div>
           </div>

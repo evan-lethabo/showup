@@ -159,13 +159,19 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
  * Interprets a guest's condition text for one day. Never persists anything; the guest confirms the result and saves
  * it through PUT /response. Event context comes from the database, never the client. Text is never logged.
  */
-export async function handleInterpret(eventId: string, req: Request, getDb: () => Db, getTransport: () => ModelTransport | null): Promise<Response> {
+export async function handleInterpret(
+  eventId: string,
+  req: Request,
+  getDb: () => Db,
+  getTransport: () => ModelTransport | null,
+): Promise<Response> {
   const cred = guestCredential(req);
   if (!cred) return error(401, 'unauthorised', 'Sign in with your guest link first.');
   const parsed = await readJson(req);
   if ('res' in parsed) return parsed.res;
   const body = parsed.body as { date?: unknown; text?: unknown };
-  if (typeof body.text !== 'string' || !body.text.trim()) return error(400, 'invalid_input', 'Enter what it depends on, then check it.', 'text');
+  if (typeof body.text !== 'string' || !body.text.trim())
+    return error(400, 'invalid_input', 'Enter what it depends on, then check it.', 'text');
   if ([...body.text].length > MAX_TEXT_CHARS) return error(400, 'invalid_input', `Keep it under ${MAX_TEXT_CHARS} characters.`, 'text');
   if (typeof body.date !== 'string') return error(400, 'invalid_input', "That day isn't one of this event's days.", 'date');
   let ctx: InterpretationContext;
@@ -178,7 +184,13 @@ export async function handleInterpret(eventId: string, req: Request, getDb: () =
     if (!event || !day) return error(400, 'invalid_input', "That day isn't one of this event's days.", 'date');
     const me = auth.participant;
     ctx = {
-      day: { date: day.date, weekday: WEEKDAYS[new Date(`${day.date}T00:00:00Z`).getUTCDay()]!, window_start: hhmm(day.start), window_end: hhmm(day.end), duration_minutes: event.durationMin ?? 0 },
+      day: {
+        date: day.date,
+        weekday: WEEKDAYS[new Date(`${day.date}T00:00:00Z`).getUTCDay()]!,
+        window_start: hhmm(day.start),
+        window_end: hhmm(day.end),
+        duration_minutes: event.durationMin ?? 0,
+      },
       self_name: me.displayName,
       self_id: me.id,
       roster: people.filter((p) => p.id !== me.id).map((p) => ({ id: p.id, name: p.displayName })),
@@ -220,7 +232,10 @@ export async function handleUpdateEvent(eventId: string, req: Request, getDb: ()
     const access = await authoriseOrganiser(db, eventId, cred);
     if (access.status === 'not_found') return error(404, 'not_found', "We couldn't find that event.");
     if (access.status === 'forbidden') return error(403, 'forbidden', 'Only the organiser can edit this event.');
-    const v = validateCreateEvent(parsed.body, now, { timezone: access.event.timezone, keepDates: new Set(access.event.days.map((d) => d.date)) });
+    const v = validateCreateEvent(parsed.body, now, {
+      timezone: access.event.timezone,
+      keepDates: new Set(access.event.days.map((d) => d.date)),
+    });
     if ('error' in v) return error(400, 'invalid_input', v.error.message, v.error.field);
     const { scheduleChanged } = await updateEvent(db, access.event, v.value);
     return json(200, { ok: true, scheduleChanged });
@@ -292,7 +307,12 @@ export async function handleCreateProposal(eventId: string, req: Request, getDb:
     if (access.status === 'not_found') return error(404, 'not_found', "We couldn't find that event.");
     if (access.status === 'forbidden') return error(403, 'forbidden', 'Only the organiser can propose a time.');
     const b = (parsed.body ?? {}) as Record<string, unknown>;
-    const result = await createProposal(db, access.event, { date: b.date, startMin: b.startMin, deadline: b.deadline, minAttendees: b.minAttendees }, now);
+    const result = await createProposal(
+      db,
+      access.event,
+      { date: b.date, startMin: b.startMin, deadline: b.deadline, minAttendees: b.minAttendees },
+      now,
+    );
     if (result.status === 'invalid') return error(400, 'invalid_input', result.message, result.field);
     if (result.status === 'conflict') return error(409, 'proposal_exists', 'A time is already proposed or confirmed for this event.');
     return json(201, { proposal: await getProposal(db, access.event, { kind: 'organiser' }, now) });

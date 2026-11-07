@@ -13,20 +13,20 @@ import ProposeTimeSheet from './sheets/ProposeTimeSheet';
 export default function FlowView({ v }: { v: any }) {
   return (
     <>
-    <div className="su">
-      <div className="ambient" aria-hidden="true" />
-      <div className="layer">
-        {v.isLanding ? <Landing v={v} /> : null}
-        {v.isCreate ? <Create v={v} /> : null}
-        {v.isJoin ? <Join v={v} /> : null}
-        {v.isRespond ? <Respond v={v} /> : null}
-        {v.isEvent ? <EventPage v={v} /> : null}
-        {v.sheetOpen ? <ConditionsSheet v={v} /> : null}
-        {v.proposeOpen ? <ProposeSheet v={v} /> : null}
-        {v.roundSheetOpen ? <ProposeTimeSheet v={v} /> : null}
-        {v.confirmOpen ? <ConfirmSheet v={v} /> : null}
+      <div className="su">
+        <div className="ambient" aria-hidden="true" />
+        <div className="layer">
+          {v.isLanding ? <Landing v={v} /> : null}
+          {v.isCreate ? <Create v={v} /> : null}
+          {v.isJoin ? <Join v={v} /> : null}
+          {v.isRespond ? <Respond v={v} /> : null}
+          {v.isEvent ? <EventPage v={v} /> : null}
+          {v.sheetOpen ? <ConditionsSheet v={v} /> : null}
+          {v.proposeOpen ? <ProposeSheet v={v} /> : null}
+          {v.roundSheetOpen ? <ProposeTimeSheet v={v} /> : null}
+          {v.confirmOpen ? <ConfirmSheet v={v} /> : null}
+        </div>
       </div>
-    </div>
     </>
   );
 }

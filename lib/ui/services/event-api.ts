@@ -1,6 +1,11 @@
 // Client calls to stored-event APIs. Credentials stay in guest-credential.ts, never in URLs.
 
-export async function joinStoredEvent(eventId: string, name: string): Promise<{ ok: true; participantId: string; name: string; credential: string } | { ok: false; status: number; message: string; field?: string }> {
+export async function joinStoredEvent(
+  eventId: string,
+  name: string,
+): Promise<
+  { ok: true; participantId: string; name: string; credential: string } | { ok: false; status: number; message: string; field?: string }
+> {
   const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -12,7 +17,10 @@ export async function joinStoredEvent(eventId: string, name: string): Promise<{ 
   return { ok: false, status: res.status, message: (err && err.message) || "We couldn't join this event.", field: err && err.field };
 }
 
-export async function fetchOwnResponse(eventId: string, credential: string): Promise<{ ok: true; body: unknown } | { ok: false; status: number }> {
+export async function fetchOwnResponse(
+  eventId: string,
+  credential: string,
+): Promise<{ ok: true; body: unknown } | { ok: false; status: number }> {
   const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/response`, {
     headers: { Authorization: `Bearer ${credential}` },
   });
@@ -22,7 +30,10 @@ export async function fetchOwnResponse(eventId: string, credential: string): Pro
 }
 
 /** Live aggregates. Guests and viewers send no credential; only the organiser page sends its token, as a header. */
-export async function fetchResults(eventId: string, organiserToken?: string | null): Promise<{ ok: true; body: unknown } | { ok: false; status: number }> {
+export async function fetchResults(
+  eventId: string,
+  organiserToken?: string | null,
+): Promise<{ ok: true; body: unknown } | { ok: false; status: number }> {
   const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/results`, {
     headers: organiserToken ? { Authorization: `Bearer ${organiserToken}` } : {},
     cache: 'no-store',
@@ -31,7 +42,12 @@ export async function fetchResults(eventId: string, organiserToken?: string | nu
   return { ok: true, body: await res.json() };
 }
 
-export async function interpretConditionText(eventId: string, credential: string, date: string, text: string): Promise<{ ok: true; body: any } | { ok: false; status: number; message?: string }> {
+export async function interpretConditionText(
+  eventId: string,
+  credential: string,
+  date: string,
+  text: string,
+): Promise<{ ok: true; body: any } | { ok: false; status: number; message?: string }> {
   try {
     const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/interpret`, {
       method: 'POST',
@@ -47,7 +63,11 @@ export async function interpretConditionText(eventId: string, credential: string
   }
 }
 
-export async function saveOwnResponse(eventId: string, credential: string, body: unknown): Promise<{ ok: true; body: unknown } | { ok: false; message: string; field?: string }> {
+export async function saveOwnResponse(
+  eventId: string,
+  credential: string,
+  body: unknown,
+): Promise<{ ok: true; body: unknown } | { ok: false; message: string; field?: string }> {
   const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/response`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${credential}` },
@@ -78,7 +98,11 @@ export function cancelStoredEvent(eventId: string, organiserToken: string): Prom
 }
 
 /** Organiser edits the event. `scheduleChanged` means everyone's answers were cleared. */
-export async function updateStoredEvent(eventId: string, organiserToken: string, body: unknown): Promise<{ ok: true; scheduleChanged: boolean } | { ok: false; status: number; message: string; field?: string }> {
+export async function updateStoredEvent(
+  eventId: string,
+  organiserToken: string,
+  body: unknown,
+): Promise<{ ok: true; scheduleChanged: boolean } | { ok: false; status: number; message: string; field?: string }> {
   const fallback = "We couldn't save your changes. Try again.";
   try {
     const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`, {
@@ -98,7 +122,11 @@ export async function updateStoredEvent(eventId: string, organiserToken: string,
 
 /** Guest removes themselves and their availability. */
 export function leaveStoredEvent(eventId: string, credential: string): Promise<DeleteResult> {
-  return deleteWithBearer(`/api/events/${encodeURIComponent(eventId)}/response`, credential, "We couldn't remove you from this event. Try again.");
+  return deleteWithBearer(
+    `/api/events/${encodeURIComponent(eventId)}/response`,
+    credential,
+    "We couldn't remove you from this event. Try again.",
+  );
 }
 
 // ---- Propose a time, vote, confirm -----------------------------------------------------------------------------
@@ -126,7 +154,12 @@ export function fetchProposal(eventId: string, token: string | null): Promise<Pr
 }
 
 export function createProposal(eventId: string, organiserToken: string, body: unknown): Promise<ProposalResult> {
-  return proposalCall(proposalUrl(eventId), { method: 'POST', body: JSON.stringify(body) }, organiserToken, "We couldn't propose that time. Try again.");
+  return proposalCall(
+    proposalUrl(eventId),
+    { method: 'POST', body: JSON.stringify(body) },
+    organiserToken,
+    "We couldn't propose that time. Try again.",
+  );
 }
 
 export function closeProposal(eventId: string, organiserToken: string): Promise<ProposalResult> {
@@ -134,7 +167,12 @@ export function closeProposal(eventId: string, organiserToken: string): Promise<
 }
 
 export function castVote(eventId: string, credential: string, vote: 'in' | 'out'): Promise<ProposalResult> {
-  return proposalCall(proposalUrl(eventId, '/vote'), { method: 'PUT', body: JSON.stringify({ vote }) }, credential, "We couldn't save your answer. Try again.");
+  return proposalCall(
+    proposalUrl(eventId, '/vote'),
+    { method: 'PUT', body: JSON.stringify({ vote }) },
+    credential,
+    "We couldn't save your answer. Try again.",
+  );
 }
 
 export function withdrawProposal(eventId: string, organiserToken: string): Promise<ProposalResult> {

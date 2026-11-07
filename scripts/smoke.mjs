@@ -22,9 +22,16 @@ if (!base) {
   let up = false;
   for (let i = 0; i < 60 && !up; i++) {
     await new Promise((r) => setTimeout(r, 500));
-    up = await fetch(base + '/').then(() => true, () => false);
+    up = await fetch(base + '/').then(
+      () => true,
+      () => false,
+    );
   }
-  if (!up) { server.kill(); console.error('smoke: next start did not come up (did you run `npm run build`?)'); process.exit(1); }
+  if (!up) {
+    server.kill();
+    console.error('smoke: next start did not come up (did you run `npm run build`?)');
+    process.exit(1);
+  }
 }
 
 const failures = [];
@@ -33,15 +40,26 @@ try {
   for (const route of ROUTES) {
     const page = await browser.newPage();
     const errs = [];
-    page.on('console', (m) => { if (m.type() === 'error' && !IGNORE.test(m.location().url || '')) errs.push('console: ' + m.text()); });
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !IGNORE.test(m.location().url || '')) errs.push('console: ' + m.text());
+    });
     page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
-    page.on('requestfailed', (r) => { if (!IGNORE.test(r.url())) errs.push('request failed: ' + r.url()); });
+    page.on('requestfailed', (r) => {
+      if (!IGNORE.test(r.url())) errs.push('request failed: ' + r.url());
+    });
     const res = await page.goto(base + route, { waitUntil: 'load' });
     if (!res || res.status() !== 200) errs.push('status ' + (res && res.status()));
-    try { await page.waitForSelector('.su', { timeout: 10000 }); } catch (e) { errs.push('app did not render (.su missing)'); }
+    try {
+      await page.waitForSelector('.su', { timeout: 10000 });
+    } catch (e) {
+      errs.push('app did not render (.su missing)');
+    }
     await page.waitForTimeout(1500); // let mount-time timers (dot growth etc.) run
     console.log(`${errs.length ? 'FAIL' : 'ok  '} ${route}`);
-    errs.forEach((e) => { console.log('       ' + e); failures.push(route + ' ' + e); });
+    errs.forEach((e) => {
+      console.log('       ' + e);
+      failures.push(route + ' ' + e);
+    });
     await page.close();
   }
   const res = await fetch(base + '/preview/not-a-start-screen');
@@ -52,5 +70,8 @@ try {
   await browser.close();
   if (server) server.kill();
 }
-if (failures.length) { console.error(`\nsmoke: ${failures.length} problem(s)`); process.exit(1); }
+if (failures.length) {
+  console.error(`\nsmoke: ${failures.length} problem(s)`);
+  process.exit(1);
+}
 console.log('\nsmoke: all routes clean');

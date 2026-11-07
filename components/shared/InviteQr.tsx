@@ -8,9 +8,15 @@ export default function InviteQr({ url }: { url: string }) {
   useEffect(() => {
     let live = true;
     QRCode.toDataURL(url, { margin: 2, width: 320, errorCorrectionLevel: 'M', color: { dark: '#333333', light: '#FFFFFF' } })
-      .then((data) => { if (live) setSrc({ url, data }); })
-      .catch(() => { if (live) setSrc(null); });
-    return () => { live = false; };
+      .then((data) => {
+        if (live) setSrc({ url, data });
+      })
+      .catch(() => {
+        if (live) setSrc(null);
+      });
+    return () => {
+      live = false;
+    };
   }, [url]);
   if (!src || src.url !== url) return null;
   return (

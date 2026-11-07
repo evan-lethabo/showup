@@ -12,10 +12,16 @@ export function bestWindow(win: Window, slotId: string, people: readonly Respons
   let max = 0;
   for (let t = win.s; t < win.e; t += 15) {
     const n = people.filter((r) => (r.ranges[slotId] || []).some((rg) => rg.s <= t && rg.e >= t + 15)).length;
-    if (n > max) { max = n; best = { s: t, e: t + 15 }; cur = best; }
-    else if (n === max && n > 0 && cur && cur.e === t) { cur.e = t + 15; if (best && cur.e - cur.s > best.e - best.s) best = cur; }
-    else if (n === max && n > 0) { cur = { s: t, e: t + 15 }; }
-    else cur = null;
+    if (n > max) {
+      max = n;
+      best = { s: t, e: t + 15 };
+      cur = best;
+    } else if (n === max && n > 0 && cur && cur.e === t) {
+      cur.e = t + 15;
+      if (best && cur.e - cur.s > best.e - best.s) best = cur;
+    } else if (n === max && n > 0) {
+      cur = { s: t, e: t + 15 };
+    } else cur = null;
   }
   return best;
 }

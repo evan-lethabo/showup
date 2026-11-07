@@ -1,4 +1,13 @@
 /* Join */
-.j-org{margin-top:var(--space-3);font-size:17px;color:var(--text-muted)}
-.j-form{display:flex;flex-direction:column;gap:var(--space-6);margin-top:var(--space-7);max-width:420px}
-
+.j-org {
+  margin-top: var(--space-3);
+  font-size: 17px;
+  color: var(--text-muted);
+}
+.j-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: var(--space-7);
+  max-width: 420px;
+}

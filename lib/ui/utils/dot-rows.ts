@@ -10,11 +10,20 @@ export function dotRowsFrom(days, bestId, grown, settled) {
     }
     var spoken = d.time ? d.time.replace(' – ', ' to ') : '';
     return {
-      title: d.title, time: d.time || '', hasTime: !!d.time && d.free > 0, dots: dots,
-      go: String(d.go), free: String(d.free), hasFree: d.free > 0, noFree: d.free === 0,
+      title: d.title,
+      time: d.time || '',
+      hasTime: !!d.time && d.free > 0,
+      dots: dots,
+      go: String(d.go),
+      free: String(d.free),
+      hasFree: d.free > 0,
+      noFree: d.free === 0,
       cls: 'dr' + (d.go === 0 ? ' is-dim' : ''),
       numCls: 'dr-go' + (bestId && d.id === bestId ? ' is-best' : ''),
-      aria: d.free === 0 ? d.title + ': nobody free' : d.title + (spoken ? ', ' + spoken : '') + ': ' + d.go + ' of ' + d.free + ' free would go'
+      aria:
+        d.free === 0
+          ? d.title + ': nobody free'
+          : d.title + (spoken ? ', ' + spoken : '') + ': ' + d.go + ' of ' + d.free + ' free would go',
     };
   });
 }

@@ -12,7 +12,10 @@ interface ResponsesBody {
   output?: { type: string; content?: { type: string; text?: string; refusal?: string }[] }[];
 }
 
-export function openAiTransport(apiKey: string, opts: { model?: string; timeoutMs?: number; fetchImpl?: typeof fetch } = {}): ModelTransport {
+export function openAiTransport(
+  apiKey: string,
+  opts: { model?: string; timeoutMs?: number; fetchImpl?: typeof fetch } = {},
+): ModelTransport {
   const doFetch = opts.fetchImpl ?? fetch;
   return async ({ system, user, schema }): Promise<TransportResult> => {
     const ctrl = new AbortController();
@@ -25,7 +28,10 @@ export function openAiTransport(apiKey: string, opts: { model?: string; timeoutM
         body: JSON.stringify({
           model: opts.model ?? INTERPRETER_MODEL,
           reasoning: { effort: 'low' },
-          input: [{ role: 'system', content: system }, { role: 'user', content: user }],
+          input: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
           text: { format: { type: 'json_schema', name: 'condition_clauses', strict: true, schema } },
           max_output_tokens: MAX_OUTPUT_TOKENS,
           store: false,
@@ -36,7 +42,10 @@ export function openAiTransport(apiKey: string, opts: { model?: string; timeoutM
       if (body.status === 'incomplete' || body.incomplete_details?.reason) return { ok: false, category: 'truncated' };
       const parts = (body.output ?? []).filter((o) => o.type === 'message').flatMap((o) => o.content ?? []);
       if (parts.some((p) => p.type === 'refusal')) return { ok: false, category: 'refusal' };
-      const text = parts.filter((p) => p.type === 'output_text').map((p) => p.text ?? '').join('');
+      const text = parts
+        .filter((p) => p.type === 'output_text')
+        .map((p) => p.text ?? '')
+        .join('');
       return text ? { ok: true, text } : { ok: false, category: 'bad_json' };
     } catch (err) {
       return { ok: false, category: (err as { name?: string })?.name === 'AbortError' ? 'timeout' : 'unavailable' };

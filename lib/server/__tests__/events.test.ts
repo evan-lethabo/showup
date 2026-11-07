@@ -17,14 +17,22 @@ const input: CreateEventInput = {
 };
 
 let t: TestDb;
-beforeAll(async () => { t = await testDb(); });
-afterAll(async () => { await t.close(); });
+beforeAll(async () => {
+  t = await testDb();
+});
+afterAll(async () => {
+  await t.close();
+});
 
 describe('creating an event', () => {
   it('persists the event and every day, in order, with cross-midnight ends above 1440', async () => {
     const { id } = await createEvent(t.db, input);
     expect(await getPublicEvent(t.db, id)).toEqual({
-      id, title: 'Weekend plans', organiserName: 'Alex', durationMin: 120, timezone: 'Australia/Sydney',
+      id,
+      title: 'Weekend plans',
+      organiserName: 'Alex',
+      durationMin: 120,
+      timezone: 'Australia/Sydney',
       days: [
         { date: '2030-01-04', start: 1080, end: 1380 },
         { date: '2030-01-05', start: 1320, end: 1500 },
@@ -32,8 +40,15 @@ describe('creating an event', () => {
       ],
       participants: [],
     });
-    const positions = await t.db.query(`SELECT to_char(date, 'YYYY-MM-DD') AS date, position FROM event_days WHERE event_id = $1 ORDER BY position`, [id]);
-    expect(positions).toEqual([{ date: '2030-01-04', position: 0 }, { date: '2030-01-05', position: 1 }, { date: '2030-01-11', position: 2 }]);
+    const positions = await t.db.query(
+      `SELECT to_char(date, 'YYYY-MM-DD') AS date, position FROM event_days WHERE event_id = $1 ORDER BY position`,
+      [id],
+    );
+    expect(positions).toEqual([
+      { date: '2030-01-04', position: 0 },
+      { date: '2030-01-05', position: 1 },
+      { date: '2030-01-11', position: 2 },
+    ]);
   });
 
   it('stores only the SHA-256 hash of the organiser token', async () => {
