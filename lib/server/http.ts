@@ -1,5 +1,7 @@
 // Route handler logic, kept free of Next.js so it can be tested against an isolated database.
-import { isUnavailable, logDbError, pgCode, type Db } from './db';
+// Shared response and request helpers live in http-helpers.ts.
+import { logDbError, pgCode, type Db } from './db';
+import { error, failure, guestCredential, json, MAX_BODY_BYTES, readJson } from './http-helpers';
 import { authoriseOrganiser, createEvent, deleteEvent, updateEvent, getPublicEvent, guestPath, organiserPath } from './events';
 import { authenticateGuest, eventPeople, joinEvent, leaveEvent, loadOwnResponse, saveResponse } from './responses';
 import { interpretCondition, MAX_TEXT_CHARS, type InterpretationContext, type ModelTransport } from '../conditions/interpreter';
@@ -7,23 +9,7 @@ import { castVote, closeNow, createProposal, getProposal, withdrawProposal, type
 import { computeResults } from './results';
 import { validateCreateEvent } from './validate';
 
-export const MAX_BODY_BYTES = 16_384;
-const NO_STORE = { 'Cache-Control': 'no-store' };
-
-function json(status: number, body: unknown): Response {
-  return Response.json(body, { status, headers: NO_STORE });
-}
-
-function error(status: number, code: string, message: string, field?: string): Response {
-  return json(status, { error: field ? { code, message, field } : { code, message } });
-}
-
-function failure(context: string, err: unknown): Response {
-  logDbError(context, err);
-  return isUnavailable(err)
-    ? error(503, 'unavailable', "We couldn't reach the database. Try again in a moment.")
-    : error(500, 'server_error', 'Something went wrong on our side. Try again in a moment.');
-}
+export { MAX_BODY_BYTES };
 
 export async function checkHealth(getDb: () => Db): Promise<Response> {
   try {
@@ -66,30 +52,6 @@ export async function handleGetEvent(id: string, getDb: () => Db): Promise<Respo
     return event ? json(200, event) : error(404, 'not_found', "We couldn't find that event.");
   } catch (err) {
     return failure('get-event', err);
-  }
-}
-
-function guestCredential(req: Request): string | null {
-  const auth = req.headers.get('authorization');
-  if (auth?.toLowerCase().startsWith('bearer ')) {
-    const c = auth.slice(7).trim();
-    return c || null;
-  }
-  return null;
-}
-
-async function readJson(req: Request): Promise<{ ok: true; body: unknown } | { ok: false; res: Response }> {
-  if (!(req.headers.get('content-type') ?? '').toLowerCase().startsWith('application/json')) {
-    return { ok: false, res: error(415, 'unsupported_media_type', 'Send JSON.') };
-  }
-  const declared = Number(req.headers.get('content-length') ?? 0);
-  if (declared > MAX_BODY_BYTES) return { ok: false, res: error(413, 'too_large', 'That request is too large.') };
-  const raw = await req.text();
-  if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) return { ok: false, res: error(413, 'too_large', 'That request is too large.') };
-  try {
-    return { ok: true, body: JSON.parse(raw) };
-  } catch {
-    return { ok: false, res: error(400, 'invalid_json', 'Send valid JSON.') };
   }
 }
 

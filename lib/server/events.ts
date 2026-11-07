@@ -149,7 +149,10 @@ export async function getPublicEvent(db: Db, id: string): Promise<PublicEvent | 
 
 export type OrganiserAccess = { status: 'ok'; event: PublicEvent } | { status: 'not_found' } | { status: 'forbidden' };
 
-/** Server-side gate for every organiser-only read or action. */
+/**
+ * Server-side gate for every organiser-only read or action. 'not_found' is checked first so the caller can tell a missing
+ * event from a wrong token, but ids are 96 random bits, so that doesn't help anyone guess events.
+ */
 export async function authoriseOrganiser(db: Db, id: string, token: unknown): Promise<OrganiserAccess> {
   const found = await loadEvent(db, id);
   if (!found) return { status: 'not_found' };

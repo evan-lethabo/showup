@@ -1,5 +1,8 @@
 // Live results for a stored event: saved responses through the C8 engine, reduced to public aggregates.
 // Every field is copied explicitly; engine objects (which hold responses and names) never leave this module.
+// Privacy rule: what anyone with the event link can see is counts and names only. Guests' conditions and the engine's
+// elimination trace (SlotStats.rounds, which says who dropped out and why) reveal who depends on whom, so they stay on
+// the server. Don't add them to ResultsDto.
 import { rankSlots, type EventData, type TimeSlotStats } from '../engine';
 import type { Db } from './db';
 import type { PublicEvent } from './events';

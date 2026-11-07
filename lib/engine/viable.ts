@@ -224,6 +224,8 @@ export function slotStats(slot: Slot | string, participants: readonly Response[]
       nameOf,
     );
     const viableIds = new Set(viable.map((p) => p.r.id));
+    // An unresolvable condition (e.g. "if the weather's good") can't be checked, so the person is never counted as coming.
+    // They show as "maybe" when their other conditions would hold, and don't affect who else is viable.
     const tentative = free.filter((p) => {
       if (!p.unresolvable) return false;
       const ids = new Set(viableIds).add(p.r.id);

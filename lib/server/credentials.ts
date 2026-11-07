@@ -1,3 +1,7 @@
+// There are no accounts. Two kinds of bearer secret stand in for them:
+//   - the organiser token, created with the event and kept in the organiser's private link;
+//   - a guest credential "<participantId>.<secret>", issued when someone joins.
+// Only the SHA-256 hash is stored, so a database leak can't be replayed as a login, and comparison is constant-time.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 /** Event and participant ids: 96 random bits, base64url (16 characters). */
