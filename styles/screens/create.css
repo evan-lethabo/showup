@@ -122,6 +122,28 @@
   width: 42px;
   height: 42px;
 }
+.time-mode {
+  display: flex;
+  gap: var(--space-2);
+}
+.time-mode-btn {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--control-line);
+  border-radius: var(--radius-button);
+  background: var(--surface);
+  font: 500 14px var(--font-primary);
+  color: #333333;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.time-mode-btn.is-on {
+  font-weight: 600;
+}
+.time-mode-btn:focus-visible {
+  outline: 2px solid #333333;
+  outline-offset: 2px;
+}
 .window-len {
   font-size: 15px;
   color: var(--text-muted);

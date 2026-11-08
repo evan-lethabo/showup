@@ -112,6 +112,38 @@ export default function Create({ v }: { v: any }) {
                 <h2 id="time-h" className="comp-h">
                   What time?
                 </h2>
+                <div className="time-mode" role="group" aria-label="Apply time to">
+                  <button type="button" className={v.timeAllCls} aria-pressed={v.timeAllPressed} onClick={v.setTimeAll}>
+                    Same for all days
+                  </button>
+                  <button type="button" className={v.timeCustomCls} aria-pressed={v.timeCustomPressed} onClick={v.setTimeCustom}>
+                    Custom
+                  </button>
+                </div>
+                {v.isCustomTime && (
+                  <div className="field">
+                    <label className="field-label" htmlFor="c-time-day">
+                      Set the time for
+                    </label>
+                    <select
+                      id="c-time-day"
+                      className="select"
+                      value={v.timeDayValue}
+                      onChange={v.setTimeDay}
+                      disabled={!v.timeDayOptions.length}
+                    >
+                      {v.timeDayOptions.length ? (
+                        v.timeDayOptions.map((o: any) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="">Pick days first</option>
+                      )}
+                    </select>
+                  </div>
+                )}
                 <TimeWheels wheels={v.createWheels} />
                 <p className="window-len" aria-live="polite">
                   {v.windowLen}
