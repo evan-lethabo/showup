@@ -12,6 +12,11 @@ import { minuteInWindow, untilFromWheel, wheelMinute } from '../utils/wheel-time
 import { DRAG_PX, middleRange, moveEndpoint, nearestEndpoint, pointerMinute, shiftRange, snapMinute } from '../utils/timeline';
 /* Respond screen: days, availability, willingness, submit */
 export class RespondMixin {
+  // The time window of one day. Days can have different windows, so never use the event-wide state.win for a day.
+  winOf(id) {
+    var sl = this.slotById(id);
+    return (sl && sl.win) || this.state.win;
+  }
   slotById(id) {
     var l = this.state.slots;
     for (var i = 0; i < l.length; i++) {
@@ -132,7 +137,8 @@ export class RespondMixin {
     var slot = this.slotById(id);
     var patch = { avail: this.withKey('avail', id, a), formError: '', liveMsg: slot.day + ': ' + STATE_LABELS[a] };
     if (prev === 0 && a > 0) {
-      patch.ranges = this.withKey('ranges', id, [{ s: s.win.s, e: s.win.e }]);
+      var dw = this.winOf(id);
+      patch.ranges = this.withKey('ranges', id, [{ s: dw.s, e: dw.e }]);
       patch.openWheel = this.withKey('openWheel', id, null);
     }
     if (a > 0) patch.noneWork = false;
@@ -150,18 +156,18 @@ export class RespondMixin {
     this.change(patch);
   }
   barRanges(id) {
-    var w = this.state.win;
+    var w = this.winOf(id);
     var rs = mergeRanges(this.state.ranges[id] || []);
     return rs.length ? rs : [{ s: w.s, e: w.e }];
   }
-  barRawMinute(e) {
-    var w = this.state.win;
+  barRawMinute(id, e) {
+    var w = this.winOf(id);
     var rect = e.currentTarget.getBoundingClientRect();
     return pointerMinute(e.clientX, rect.left, rect.width, w);
   }
-  barMinute(e) {
-    var w = this.state.win;
-    return snapMinute(this.barRawMinute(e), w);
+  barMinute(id, e) {
+    var w = this.winOf(id);
+    return snapMinute(this.barRawMinute(id, e), w);
   }
   tapBar(id, e) {
     if (!e || e.detail === 0) {
@@ -170,8 +176,8 @@ export class RespondMixin {
     }
     if (this.barGesture === 'moved') return;
     var rs = this.barRanges(id);
-    var hit = this.barMinute(e);
-    this.setRanges(id, moveEndpoint(rs, nearestEndpoint(rs, hit), hit, this.state.win));
+    var hit = this.barMinute(id, e);
+    this.setRanges(id, moveEndpoint(rs, nearestEndpoint(rs, hit), hit, this.winOf(id)));
   }
   // A press becomes a drag once it moves DRAG_PX mostly sideways; mostly vertical is left to page scrolling.
   // Either way the gesture is no longer a tap, so the click that may follow is ignored.
@@ -180,7 +186,7 @@ export class RespondMixin {
     if (!e.isPrimary || e.button !== 0) return;
     var rs = this.barRanges(id);
     // Pressing the middle of a range (not its edges) means a drag carries the whole range, keeping its length.
-    var raw = this.barRawMinute(e);
+    var raw = this.barRawMinute(id, e);
     var mid = middleRange(this.state.ranges[id] && this.state.ranges[id].length ? rs : [], raw);
     this.barGesture = {
       id: id,
@@ -189,7 +195,7 @@ export class RespondMixin {
       y: e.clientY,
       base: rs,
       orig: this.state.ranges[id],
-      target: nearestEndpoint(rs, this.barMinute(e)),
+      target: nearestEndpoint(rs, this.barMinute(id, e)),
       shift: mid >= 0 ? { idx: mid, grab: raw } : null,
       dragging: false,
       last: null,
@@ -213,16 +219,16 @@ export class RespondMixin {
       this.setState({ barDrag: id });
     }
     if (g.shift) {
-      var step = Math.round((this.barRawMinute(e) - g.shift.grab) / 30);
+      var step = Math.round((this.barRawMinute(id, e) - g.shift.grab) / 30);
       if (step === g.last) return;
       g.last = step;
-      this.setRanges(id, shiftRange(g.base, g.shift.idx, step * 30, this.state.win));
+      this.setRanges(id, shiftRange(g.base, g.shift.idx, step * 30, this.winOf(id)));
       return;
     }
-    var hit = this.barMinute(e);
+    var hit = this.barMinute(id, e);
     if (hit === g.last) return;
     g.last = hit;
-    this.setRanges(id, moveEndpoint(g.base, g.target, hit, this.state.win));
+    this.setRanges(id, moveEndpoint(g.base, g.target, hit, this.winOf(id)));
   }
   barEnd(id, e, cancelled) {
     var g = this.barGesture;
@@ -233,7 +239,7 @@ export class RespondMixin {
     this.setState({ barDrag: null });
   }
   setRangeEdge(id, idx, edge, val) {
-    var w = this.state.win;
+    var w = this.winOf(id);
     var rs = clone(this.state.ranges[id] || []);
     var r = rs[idx];
     if (!r) return;
@@ -251,7 +257,7 @@ export class RespondMixin {
     this.setState({ openWheel: this.withKey('openWheel', id, cur === idx ? null : idx) });
   }
   addRangeFor(id) {
-    var w = this.state.win;
+    var w = this.winOf(id);
     var rs = mergeRanges(this.state.ranges[id] || []);
     if (rs.length !== 1) return null;
     var r = rs[0];
@@ -471,25 +477,30 @@ export class RespondMixin {
   respondVals(s) {
     var self = this;
     var participant = s.mode === 'participant';
-    var w = s.win;
-    var span = Math.max(1, w.e - w.s);
-    var hours = [];
-    for (var hh = Math.ceil(w.s / 60) * 60; hh <= w.e; hh += 60) hours.push(hh);
-    var tickStep = hours.length > 10 ? 2 : 1;
-    var ticks = hours
-      .filter(function (v, i) {
-        return i % tickStep === 0 || i === hours.length - 1;
-      })
-      .map(function (v) {
-        return {
-          label: fmtTick(v),
-          left: String(((v - w.s) / span) * 100),
-          cls: 'tl-h' + (v === w.s ? ' is-first' : '') + (v === w.e ? ' is-last' : ''),
-        };
-      });
+    function tlFor(w) {
+      var span = Math.max(1, w.e - w.s);
+      var hours = [];
+      for (var hh = Math.ceil(w.s / 60) * 60; hh <= w.e; hh += 60) hours.push(hh);
+      var tickStep = hours.length > 10 ? 2 : 1;
+      var ticks = hours
+        .filter(function (v, i) {
+          return i % tickStep === 0 || i === hours.length - 1;
+        })
+        .map(function (v) {
+          return {
+            label: fmtTick(v),
+            left: String(((v - w.s) / span) * 100),
+            cls: 'tl-h' + (v === w.s ? ' is-first' : '') + (v === w.e ? ' is-last' : ''),
+          };
+        });
+      return { span: span, ticks: ticks };
+    }
     var slots =
       s.screen === 'respond'
         ? s.slots.map(function (sl) {
+            var w = self.winOf(sl.id);
+            var tl = tlFor(w);
+            var span = tl.span;
             var a = s.avail[sl.id] || 0;
             var wv = s.will[sl.id];
             var c = s.conds[sl.id];
@@ -513,7 +524,7 @@ export class RespondMixin {
                     min: wheelMinute(w.s),
                     max: wheelMinute(w.e),
                     onChange: function (v) {
-                      self.setRangeEdge(sl.id, ri, 's', minuteInWindow(v, self.state.win));
+                      self.setRangeEdge(sl.id, ri, 's', minuteInWindow(v, w));
                     },
                   },
                   {
@@ -579,7 +590,7 @@ export class RespondMixin {
                   width: String(((r.e - r.s) / span) * 100),
                 };
               }),
-              ticks: ticks,
+              ticks: tl.ticks,
               barAria:
                 sl.day + ' timeline. Tap an hour to move the nearest end of your time. Currently ' + rs.map(rangeText).join(' and ') + '.',
               tapBar: function (e) {

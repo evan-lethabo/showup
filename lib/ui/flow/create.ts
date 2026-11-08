@@ -2,7 +2,7 @@
 // Ported verbatim from archive/showup-standalone/js/components/create.js. Only the export/import lines were added
 // (the original files shared globals through classic <script> tags). Types come later.
 import { DAYS, MON, MONTHS } from '../data/constants';
-import { pad2 } from '../utils/format';
+import { fmtCompact, pad2 } from '../utils/format';
 import { isoFromDate, todayIso } from '../utils/dates';
 import { untilFromWheel, wheelMinute } from '../utils/wheel-time';
 import { saveOrganiserEvent } from '../services/organiser-events';
@@ -23,9 +23,44 @@ export class CreateMixin {
   toggleDay(iso) {
     var list = this.state.pickDays.slice();
     var i = list.indexOf(iso);
-    if (i >= 0) list.splice(i, 1);
-    else list.push(iso);
-    this.setState({ pickDays: list, createError: '' });
+    var dayTimes = Object.assign({}, this.state.dayTimes);
+    if (i >= 0) {
+      list.splice(i, 1);
+      delete dayTimes[iso];
+    } else list.push(iso);
+    this.setState({ pickDays: list, dayTimes: dayTimes, createError: '' });
+  }
+  // The day the wheels currently edit in custom mode (falls back to the first picked day).
+  activeTimeDay(s) {
+    s = s || this.state;
+    var sorted = s.pickDays.slice().sort();
+    return sorted.indexOf(s.timeDay) >= 0 ? s.timeDay : sorted[0] || '';
+  }
+  // The time window a given day will be saved with.
+  dayWindow(s, iso) {
+    if (s.timeMode === 'custom' && s.dayTimes[iso]) return s.dayTimes[iso];
+    return { from: s.from, until: s.until };
+  }
+  setTimeMode(mode) {
+    var s = this.state;
+    if (mode === s.timeMode) return;
+    this.setState({ timeMode: mode, timeDay: this.activeTimeDay(s), createError: '' });
+  }
+  setTimeDay(iso) {
+    this.setState({ timeDay: iso });
+  }
+  // Applies a new from/until pair, to the shared window or to the active day in custom mode.
+  applyWindow(from, until) {
+    var s = this.state;
+    if (s.timeMode === 'custom') {
+      var day = this.activeTimeDay(s);
+      if (!day) return;
+      var dayTimes = Object.assign({}, s.dayTimes);
+      dayTimes[day] = { from: from, until: until };
+      this.setState({ dayTimes: dayTimes, createError: '' });
+    } else {
+      this.setState({ from: from, until: until, createError: '' });
+    }
   }
   shiftMonth(d) {
     var p = this.state.calMonth.split('-').map(Number);
@@ -35,21 +70,38 @@ export class CreateMixin {
     this.setState({ calMonth: m });
   }
   setFrom(m) {
-    var u = this.state.until;
+    var u = this.activeWindow(this.state).until;
     if (u < m + 60) u = m + 60;
-    this.setState({ from: m, until: u, createError: '' });
+    this.applyWindow(m, u);
   }
   setUntil(m) {
-    var f = this.state.from;
+    var f = this.activeWindow(this.state).from;
     if (m < f + 60) f = Math.max(0, m - 60);
-    this.setState({ until: m, from: f, createError: '' });
+    this.applyWindow(f, m);
+  }
+  // The window the wheels show: the active day's in custom mode, otherwise the shared one.
+  activeWindow(s) {
+    if (s.timeMode === 'custom') {
+      var day = this.activeTimeDay(s);
+      if (day) return this.dayWindow(s, day);
+    }
+    return { from: s.from, until: s.until };
   }
   // Organiser edits a stored event: the Create screen again, filled in with the event's current details.
   startEditEvent() {
     var ev = this.state.event;
     if (!ev || !ev.persisted || this.state.mode !== 'organiser' || !this.organiserToken()) return;
     var first = ev.slots[0];
+    var dayTimes = {};
+    var differs = false;
+    ev.slots.forEach(function (x) {
+      dayTimes[x.iso] = { from: x.win.s, until: x.win.e };
+      if (first && (x.win.s !== first.win.s || x.win.e !== first.win.e)) differs = true;
+    });
     this.go({
+      timeMode: differs ? 'custom' : 'all',
+      dayTimes: dayTimes,
+      timeDay: first ? first.iso : '',
       screen: 'create',
       editingEvent: true,
       name: ev.name,
@@ -92,7 +144,8 @@ export class CreateMixin {
         .slice()
         .sort()
         .map(function (iso) {
-          return { date: iso, start: s.from, end: s.until };
+          var w = self.dayWindow(s, iso);
+          return { date: iso, start: w.from, end: w.until };
         }),
     };
     this.setState({ creating: true, createError: '', nameError: '' });
@@ -136,7 +189,8 @@ export class CreateMixin {
         .slice()
         .sort()
         .map(function (iso) {
-          return { date: iso, start: s.from, end: s.until };
+          var w = self.dayWindow(s, iso);
+          return { date: iso, start: w.from, end: w.until };
         }),
     };
     this.setState({ creating: true, createError: '', nameError: '' });
@@ -182,6 +236,17 @@ export class CreateMixin {
     var calPrevAria = '';
     var calNextAria = '';
     var today = todayIso();
+    var aw = this.activeWindow(s);
+    var sortedDays = s.pickDays.slice().sort();
+    var timeDayOptions = sortedDays.map(function (iso) {
+      var p = iso.split('-').map(Number);
+      var dt = new Date(p[0], p[1] - 1, p[2]);
+      var custom = s.timeMode === 'custom' && s.dayTimes[iso];
+      return {
+        value: iso,
+        label: DAYS[dt.getDay()] + ' ' + p[2] + ' ' + MON[dt.getMonth()] + (custom ? ' · ' + fmtCompact(custom.from, custom.until) : ''),
+      };
+    });
     if (s.screen === 'create') {
       var cp = s.calMonth.split('-').map(Number);
       var first = new Date(cp[0], cp[1] - 1, 1);
@@ -220,7 +285,7 @@ export class CreateMixin {
         {
           key: 'c-from',
           label: 'From',
-          value: wheelMinute(s.from),
+          value: wheelMinute(aw.from),
           onChange: function (v) {
             self.setFrom(v);
           },
@@ -228,14 +293,14 @@ export class CreateMixin {
         {
           key: 'c-until',
           label: 'Until',
-          value: wheelMinute(s.until),
+          value: wheelMinute(aw.until),
           onChange: function (v) {
-            self.setUntil(untilFromWheel(v, self.state.from));
+            self.setUntil(untilFromWheel(v, self.activeWindow(self.state).from));
           },
         },
       ];
     }
-    var winLen = s.until - s.from;
+    var winLen = aw.until - aw.from;
     var winH = Math.floor(winLen / 60);
     var winM = winLen % 60;
     var windowLen = (winH ? winH + ' hr' : '') + (winM ? (winH ? ' ' : '') + winM + ' min' : '') + ' window';
@@ -251,7 +316,7 @@ export class CreateMixin {
         (evNow.duration || null) !== (s.duration || null) ||
         evNow.slots.length !== nDays ||
         evNow.slots.some(function (x) {
-          return s.pickDays.indexOf(x.iso) < 0 || x.win.s !== s.from || x.win.e !== s.until;
+          return s.pickDays.indexOf(x.iso) < 0 || x.win.s !== self.dayWindow(s, x.iso).from || x.win.e !== self.dayWindow(s, x.iso).until;
         });
     }
     var hasResponders = !!(
@@ -278,6 +343,22 @@ export class CreateMixin {
         self.shiftMonth(1);
       },
       createWheels: createWheels,
+      isCustomTime: s.timeMode === 'custom',
+      timeAllCls: 'time-mode-btn' + (s.timeMode !== 'custom' ? ' glass-silver is-on' : ''),
+      timeCustomCls: 'time-mode-btn' + (s.timeMode === 'custom' ? ' glass-silver is-on' : ''),
+      timeAllPressed: s.timeMode !== 'custom' ? 'true' : 'false',
+      timeCustomPressed: s.timeMode === 'custom' ? 'true' : 'false',
+      setTimeAll: function () {
+        self.setTimeMode('all');
+      },
+      setTimeCustom: function () {
+        self.setTimeMode('custom');
+      },
+      timeDayOptions: timeDayOptions,
+      timeDayValue: self.activeTimeDay(s),
+      setTimeDay: function (e) {
+        self.setTimeDay(e.target.value);
+      },
       windowLen: windowLen,
       durationValue: s.duration ? String(s.duration) : '',
       durationOptions: DURATIONS,
