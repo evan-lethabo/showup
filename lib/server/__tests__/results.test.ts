@@ -314,13 +314,22 @@ describe('GET /results access and privacy', () => {
     expect(body).toEqual(await dto(id));
   });
 
-  it('organiser: the same public payload (names are not an organiser privilege any more)', async () => {
+  it('organiser: the public payload, plus participant ids so a guest can be removed', async () => {
     const res = await get(id, `Bearer ${token}`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Object.keys(body).sort()).toEqual([...AGG].sort());
-    assertAggregateOnly(body);
-    expect(body).toEqual(await dto(id));
+    expect(body.people.map((p: any) => p.id)).toEqual([guest.split('.')[0], expect.any(String), expect.any(String)]);
+    const withoutIds = { ...body, people: body.people.map(({ id: _id, ...p }: any) => p) };
+    assertAggregateOnly(withoutIds);
+    expect(withoutIds).toEqual(await dto(id));
+  });
+
+  it('guests and viewers never get participant ids', async () => {
+    for (const auth of [undefined, `Bearer ${guest}`]) {
+      const body = await (await get(id, auth)).json();
+      expect(body.people.every((p: any) => !('id' in p))).toBe(true);
+    }
   });
 
   it.each([

@@ -357,6 +357,8 @@ export class RespondMixin {
         function (r) {
           if (!r.ok) {
             self.setState({ phase: 'editing', formError: r.message });
+            // The guest was removed by the organiser while they were editing.
+            if (r.status === 401) self.showRemoved();
             return;
           }
           var data = r.body;

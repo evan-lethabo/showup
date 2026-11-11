@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createEvent } from '../events';
-import { handleDeleteEvent, handleGetResults, handleLeaveEvent } from '../http';
+import { handleDeleteEvent, handleGetResults, handleLeaveEvent, handleRemoveParticipant } from '../http';
 import { authenticateGuest, joinEvent, saveResponse } from '../responses';
 import { testDb, type TestDb } from './pglite';
 
@@ -74,5 +74,49 @@ describe('leave event (guest)', () => {
     expect((await handleLeaveEvent(e1, req(), () => t.db)).status).toBe(401);
     expect((await handleLeaveEvent(e2, req(c1), () => t.db)).status).toBe(401);
     expect(await count('participants', e1)).toBe(1);
+  });
+});
+
+describe('remove guest (organiser)', () => {
+  const pid = (cred: string) => cred.split('.')[0]!;
+
+  it('removes only that guest and their response; their credential then stops working', async () => {
+    const { id, token } = await createEvent(t.db, base);
+    const a = await guest(id, 'Alpha');
+    const b = await guest(id, 'Beta');
+    expect((await handleRemoveParticipant(id, pid(a), req(token), () => t.db)).status).toBe(200);
+    expect(await count('participants', id)).toBe(1);
+    expect(await count('ranges', id)).toBe(1);
+    expect(await count('day_willingness', id)).toBe(1);
+    expect((await handleLeaveEvent(id, req(a), () => t.db)).status).toBe(401);
+    expect((await authenticateGuest(t.db, id, b)).status).toBe('ok');
+  });
+
+  it('refuses a guest credential, a wrong token and no token, and removes nobody', async () => {
+    const { id } = await createEvent(t.db, base);
+    const a = await guest(id, 'Alpha');
+    const b = await guest(id, 'Beta');
+    for (const c of [b, a, 'nope', undefined]) {
+      expect((await handleRemoveParticipant(id, pid(a), req(c), () => t.db)).status).toBe(403);
+    }
+    expect(await count('participants', id)).toBe(2);
+  });
+
+  it("404s for an unknown guest, a malformed id, another event's guest and an unknown event", async () => {
+    const { id, token } = await createEvent(t.db, base);
+    const other = (await createEvent(t.db, base)).id;
+    const elsewhere = await guest(other, 'Alpha');
+    for (const p of ['AAAAAAAAAAAAAAAA', 'bad id', pid(elsewhere)]) {
+      expect((await handleRemoveParticipant(id, p, req(token), () => t.db)).status).toBe(404);
+    }
+    expect(await count('participants', other)).toBe(1);
+    expect((await handleRemoveParticipant('missing', pid(elsewhere), req(token), () => t.db)).status).toBe(404);
+  });
+
+  it('lets the removed guest rejoin under the same name', async () => {
+    const { id, token } = await createEvent(t.db, base);
+    const a = await guest(id, 'Alpha');
+    await handleRemoveParticipant(id, pid(a), req(token), () => t.db);
+    expect((await joinEvent(t.db, id, 'Alpha')).status).toBe('ok');
   });
 });

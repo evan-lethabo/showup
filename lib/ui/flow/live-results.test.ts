@@ -242,7 +242,11 @@ describe('results view', () => {
       ['E', 'ella \u00b7 not replied yet', true],
     ]);
     expect(v.resultsPeople[0].cls).toContain('glass-silver');
-    expect(Object.keys(v.resultsPeople[0]).sort()).toEqual(['aria', 'cls', 'initial', 'key', 'name', 'tip']);
+    expect(Object.keys(v.resultsPeople[0]).sort()).toEqual(
+      ['aria', 'cls', 'initial', 'key', 'name', 'remove', 'removeAria', 'removable', 'tip'].sort(),
+    );
+    // No ids in this payload, so nobody is removable, even for the organiser.
+    expect(v.resultsPeople.some((p: any) => p.removable)).toBe(false);
     c.componentWillUnmount();
   });
 
@@ -254,6 +258,67 @@ describe('results view', () => {
     expect(c.renderVals().guestStatus).toBe("You've responded.");
     c.setState({ mode: 'organiser' });
     expect(() => c.renderVals()).not.toThrow();
+    c.componentWillUnmount();
+  });
+});
+
+describe('removing a guest', () => {
+  const withIds = () => ({
+    ...results(),
+    people: [
+      { id: 'PSAMAAAAAAAAAAA1', name: 'Sam', responded: true },
+      { id: 'PJOAAAAAAAAAAAA2', name: 'Jo', responded: false },
+    ],
+  });
+
+  it('organiser taps a circle, confirms, and the guest is deleted and disappears', async () => {
+    reply = ok(withIds());
+    const c = mount({ screen: 'event', mode: 'organiser', myName: 'Alex' }, true);
+    await vi.advanceTimersByTimeAsync(0);
+    const v = c.renderVals();
+    expect(v.resultsPeople.map((p: any) => [p.removable, p.removeAria])).toEqual([
+      [true, 'Remove Sam'],
+      [true, 'Remove Jo'],
+    ]);
+    v.resultsPeople[0].remove();
+    expect(c.renderVals()).toMatchObject({ confirmOpen: true, confirmTitle: 'Remove Sam?', confirmDanger: true, confirmHasNo: true });
+    (globalThis.fetch as any).mockImplementationOnce((url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return Promise.resolve(new Response('{"ok":true}', { status: 200 }));
+    });
+    c.renderVals().confirmAction();
+    await vi.advanceTimersByTimeAsync(0);
+    const del = calls.find((x) => x.init?.method === 'DELETE')!;
+    expect(del.url).toBe(`/api/events/${EVT}/participants/PSAMAAAAAAAAAAA1`);
+    expect(del.init!.headers).toEqual({ Authorization: `Bearer ${TOKEN}` });
+    expect(c.state.results.people.map((p: any) => p.name)).toEqual(['Jo']);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(c.state.confirmOpen).toBe(false);
+    c.componentWillUnmount();
+  });
+
+  it('guests never get a remove control, even if ids were sent', async () => {
+    reply = ok(withIds());
+    const c = mount({ screen: 'event', mode: 'guest', participantId: 'P1', myName: 'Sam' });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(c.renderVals().resultsPeople.every((p: any) => !p.removable && !p.remove)).toBe(true);
+    c.componentWillUnmount();
+  });
+
+  it('a removed guest sees a notice when their credential stops working, then goes back to the join screen', async () => {
+    store.set('showup-guest-' + EVT, 'PSAMAAAAAAAAAAA1.secret');
+    (globalThis.fetch as any).mockImplementation((url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (url.endsWith('/results')) return reply();
+      return Promise.resolve(new Response('{"error":{"code":"forbidden"}}', { status: 403 }));
+    });
+    const c = mount({ screen: 'event', mode: 'guest', participantId: 'PSAMAAAAAAAAAAA1', myName: 'Sam' });
+    await vi.advanceTimersByTimeAsync(0);
+    const v = c.renderVals();
+    expect(v).toMatchObject({ confirmOpen: true, confirmTitle: 'You\u2019ve been removed', confirmHasNo: false });
+    v.confirmAction();
+    expect(c.state).toMatchObject({ screen: 'join', confirmOpen: false });
+    expect(store.has('showup-guest-' + EVT)).toBe(false);
     c.componentWillUnmount();
   });
 });

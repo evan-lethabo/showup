@@ -1,9 +1,9 @@
 // @ts-nocheck
-import { cancelStoredEvent, closeProposal, leaveStoredEvent, withdrawProposal } from '../services/event-api';
+import { cancelStoredEvent, closeProposal, leaveStoredEvent, removeGuest, withdrawProposal } from '../services/event-api';
 import { removeOrganiserEvent } from '../services/organiser-events';
 import { clearGuestCredential, loadGuestCredential } from '../services/guest-credential';
-/* Confirm sheet: organiser cancels the event, or a guest leaves it. Also the "event cancelled" notice
-   that other people see once the polling gets a 404. */
+/* Confirm sheet: organiser cancels the event or removes a guest, or a guest leaves it. Also the "event cancelled" notice
+   that other people see once the polling gets a 404, and the "you've been removed" notice for a removed guest. */
 export class ConfirmSheetMixin {
   // target: { id, token } for an event that isn't the one on screen (the home-screen list); otherwise the open event.
   openConfirm(kind, target) {
@@ -16,11 +16,41 @@ export class ConfirmSheetMixin {
       confirmError: '',
     });
   }
+  openRemoveGuest(id, name) {
+    this.setState({ removeTarget: { id: id, name: name } });
+    this.openConfirm('remove');
+  }
+  // The organiser removed this guest: stop polling and say so. Dismissing it goes back to the join screen.
+  showRemoved() {
+    var s = this.state;
+    // On the join screen a stale credential is just being restored (and cleared) by tryRestoreGuest, not a removal.
+    if (s.mode !== 'guest' || s.screen === 'join') return;
+    if (s.confirmOpen && (s.confirmKind === 'removed' || s.confirmBusy)) return;
+    this.stopResultsPolling();
+    this.setState({
+      confirmTarget: null,
+      confirmOpen: true,
+      confirmClosing: false,
+      confirmKind: 'removed',
+      confirmBusy: false,
+      confirmError: '',
+    });
+  }
+  dismissRemoved() {
+    var ev = this.state.event;
+    if (ev) clearGuestCredential(ev.id);
+    this.setState({ confirmOpen: false, confirmClosing: false, confirmKind: null });
+    this.leaveGuest();
+  }
   closeConfirm() {
     var self = this;
     if (!this.state.confirmOpen || this.state.confirmClosing || this.state.confirmBusy) return;
     if (this.state.confirmKind === 'gone') {
       this.leaveForHome();
+      return;
+    }
+    if (this.state.confirmKind === 'removed') {
+      this.dismissRemoved();
       return;
     }
     this.setState({ confirmClosing: true });
@@ -51,6 +81,10 @@ export class ConfirmSheetMixin {
       this.confirmClosePoll(ev, withdrawProposal);
       return;
     }
+    if (s.confirmKind === 'remove') {
+      this.confirmRemoveGuest(ev);
+      return;
+    }
     var cancel = s.confirmKind === 'cancel';
     var token = t ? t.token : cancel ? this.organiserToken() : loadGuestCredential(ev.id);
     if (!token) {
@@ -72,6 +106,41 @@ export class ConfirmSheetMixin {
         return;
       }
       self.leaveForHome();
+    });
+  }
+
+  confirmRemoveGuest(ev) {
+    var self = this;
+    var target = this.state.removeTarget;
+    var token = this.organiserToken();
+    if (!target) return;
+    if (!token) {
+      this.setState({ confirmError: "We couldn't verify your access on this device." });
+      return;
+    }
+    this.setState({ confirmBusy: true, confirmError: '' });
+    removeGuest(ev.id, token, target.id).then(function (r) {
+      // 404 means they'd already left, which is the outcome we wanted.
+      if (!r.ok && r.status !== 404) {
+        self.setState({ confirmBusy: false, confirmError: r.message });
+        return;
+      }
+      var res = self.state.results;
+      var patch = { confirmBusy: false, confirmClosing: true };
+      if (res && Array.isArray(res.people)) {
+        patch.results = Object.assign({}, res, {
+          people: res.people.filter(function (p) {
+            return p.id !== target.id;
+          }),
+        });
+      }
+      self.setState(patch);
+      self.timers.confirmClose = setTimeout(
+        function () {
+          self.setState({ confirmOpen: false, confirmClosing: false, removeTarget: null });
+        },
+        self.reduced() ? 150 : 200,
+      );
     });
   }
 
@@ -104,6 +173,7 @@ export class ConfirmSheetMixin {
     var ev = s.event;
     var persisted = !!(ev && ev.persisted);
     var kind = s.confirmKind;
+    var removeName = (s.removeTarget && s.removeTarget.name) || 'this guest';
     var copy = {
       cancel: {
         title: 'Cancel this event?',
@@ -129,6 +199,18 @@ export class ConfirmSheetMixin {
         yes: 'Cancel this time',
         no: 'Keep it',
       },
+      remove: {
+        title: 'Remove ' + removeName + '?',
+        body: 'Their availability and answers will be deleted. They can still rejoin with the invite link.',
+        yes: 'Remove',
+        no: 'Cancel',
+      },
+      removed: {
+        title: 'You\u2019ve been removed',
+        body: 'The organiser removed you from this event, so your availability was deleted. You can join again with the link.',
+        yes: 'OK',
+        no: '',
+      },
       gone: {
         title: 'This event was cancelled',
         body: 'The organiser has cancelled it, so it’s no longer available.',
@@ -143,9 +225,9 @@ export class ConfirmSheetMixin {
       confirmBody: copy.body,
       confirmYes: s.confirmBusy ? 'Working…' : copy.yes,
       confirmNo: copy.no,
-      confirmHasNo: kind !== 'gone',
+      confirmHasNo: kind !== 'gone' && kind !== 'removed',
       confirmBusy: !!s.confirmBusy,
-      confirmDanger: kind === 'cancel',
+      confirmDanger: kind === 'cancel' || kind === 'remove',
       hasConfirmError: !!s.confirmError,
       confirmError: s.confirmError,
       showLeaveEvent: persisted && s.screen === 'event' && s.mode === 'guest',
@@ -158,6 +240,7 @@ export class ConfirmSheetMixin {
       },
       confirmAction: function () {
         if (self.state.confirmKind === 'gone') self.leaveForHome();
+        else if (self.state.confirmKind === 'removed') self.dismissRemoved();
         else self.confirmAction();
       },
       setConfirmEl: function (el) {

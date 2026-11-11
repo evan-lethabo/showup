@@ -207,8 +207,17 @@ export class EventPageMixin {
       resultsPeople:
         r && Array.isArray(r.people)
           ? r.people.map(function (p) {
+              // Only the organiser's results carry ids, and only the organiser can remove someone.
+              var removable = s.mode === 'organiser' && typeof p.id === 'string';
               return {
-                key: p.name,
+                key: p.id || p.name,
+                removable: removable,
+                remove: removable
+                  ? function () {
+                      self.openRemoveGuest(p.id, p.name);
+                    }
+                  : null,
+                removeAria: 'Remove ' + p.name,
                 name: p.name,
                 initial: p.name.charAt(0).toUpperCase(),
                 cls: 'av glass-silver lr-av' + (p.responded ? '' : ' is-waiting'),

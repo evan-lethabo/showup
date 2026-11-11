@@ -17,7 +17,13 @@ export class RoundMixin {
     var self = this;
     fetchProposal(eventId, this.roundToken()).then(
       function (r) {
-        if (gen !== self.pollGen || !r.ok) return;
+        if (gen !== self.pollGen) return;
+        // A guest credential that stopped working means the organiser removed this guest.
+        if (!r.ok && r.status === 403 && self.state.mode === 'guest') {
+          self.showRemoved();
+          return;
+        }
+        if (!r.ok) return;
         if (JSON.stringify(r.proposal) !== JSON.stringify(self.state.round)) self.setState({ round: r.proposal });
       },
       function () {},
