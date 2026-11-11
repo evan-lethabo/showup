@@ -3,7 +3,8 @@
 import { logDbError, pgCode, type Db } from './db';
 import { error, failure, guestCredential, json, MAX_BODY_BYTES, readJson } from './http-helpers';
 import { authoriseOrganiser, createEvent, deleteEvent, updateEvent, getPublicEvent, guestPath, organiserPath } from './events';
-import { authenticateGuest, eventPeople, joinEvent, leaveEvent, loadOwnResponse, saveResponse } from './responses';
+import { authenticateGuest, eventPeople, joinEvent, leaveEvent, loadOwnResponse, removeParticipant, saveResponse } from './responses';
+import { ID_PATTERN } from './credentials';
 import { interpretCondition, MAX_TEXT_CHARS, type InterpretationContext, type ModelTransport } from '../conditions/interpreter';
 import { castVote, closeNow, createProposal, getProposal, withdrawProposal, type Caller } from './proposals';
 import { computeResults } from './results';
@@ -107,7 +108,7 @@ export async function handleGetResults(eventId: string, req: Request, getDb: () 
     }
     const event = access.status === 'ok' ? access.event : await getPublicEvent(db, eventId);
     if (!event) return json(404, { error: 'not_found' });
-    const body = await computeResults(db, event);
+    const body = await computeResults(db, event, { withIds: access.status === 'ok' });
     return json(200, body);
   } catch (err) {
     return failure('get-results', err);
@@ -233,6 +234,23 @@ export async function handleLeaveEvent(eventId: string, req: Request, getDb: () 
     return json(200, { ok: true });
   } catch (err) {
     return failure('leave-event', err);
+  }
+}
+
+/** Organiser-only: removes one guest and their availability. They can rejoin with the invite link. */
+export async function handleRemoveParticipant(eventId: string, participantId: string, req: Request, getDb: () => Db): Promise<Response> {
+  const cred = guestCredential(req);
+  try {
+    const db = getDb();
+    const access = await authoriseOrganiser(db, eventId, cred);
+    if (access.status === 'not_found') return error(404, 'not_found', "We couldn't find that event.");
+    if (access.status === 'forbidden') return error(403, 'forbidden', 'Only the organiser can remove guests.');
+    if (!ID_PATTERN.test(participantId) || !(await removeParticipant(db, eventId, participantId))) {
+      return error(404, 'not_found', 'That guest has already left.');
+    }
+    return json(200, { ok: true });
+  } catch (err) {
+    return failure('remove-participant', err);
   }
 }
 

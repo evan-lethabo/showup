@@ -67,7 +67,7 @@ export async function saveOwnResponse(
   eventId: string,
   credential: string,
   body: unknown,
-): Promise<{ ok: true; body: unknown } | { ok: false; message: string; field?: string }> {
+): Promise<{ ok: true; body: unknown } | { ok: false; status: number; message: string; field?: string }> {
   const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/response`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${credential}` },
@@ -76,7 +76,7 @@ export async function saveOwnResponse(
   const j = await res.json().catch(() => null);
   if (res.ok) return { ok: true, body: j };
   const err = j && j.error;
-  return { ok: false, message: (err && err.message) || "We couldn't save your response.", field: err && err.field };
+  return { ok: false, status: res.status, message: (err && err.message) || "We couldn't save your response.", field: err && err.field };
 }
 
 type DeleteResult = { ok: true } | { ok: false; status: number; message: string };
@@ -126,6 +126,15 @@ export function leaveStoredEvent(eventId: string, credential: string): Promise<D
     `/api/events/${encodeURIComponent(eventId)}/response`,
     credential,
     "We couldn't remove you from this event. Try again.",
+  );
+}
+
+/** Organiser removes one guest and their availability. 404 means they're already gone. */
+export function removeGuest(eventId: string, organiserToken: string, participantId: string): Promise<DeleteResult> {
+  return deleteWithBearer(
+    `/api/events/${encodeURIComponent(eventId)}/participants/${encodeURIComponent(participantId)}`,
+    organiserToken,
+    "We couldn't remove them. Try again.",
   );
 }
 

@@ -31,8 +31,11 @@ export interface ResultsDto {
   best: ResultSlot | null;
   days: { date: string; best: DayBest | null }[];
   slots: ResultSlot[];
-  /** Everyone who has joined, in join order, and whether they've responded. Names are public (PRODUCT-RULES §7); answers are not. */
-  people: { name: string; responded: boolean }[];
+  /**
+   * Everyone who has joined, in join order, and whether they've responded. Names are public (PRODUCT-RULES §7); answers are not.
+   * `id` is only included for the organiser, who needs it to remove a guest. Never send it to guests or viewers.
+   */
+  people: { name: string; responded: boolean; id?: string }[];
 }
 
 const counts = (s: number, e: number, free: number, go: number, tentative: number): ResultCounts => ({
@@ -59,8 +62,18 @@ function dotNames(d: {
   return out;
 }
 
-/** Aggregates plus who has joined and who has responded (names only, join order). */
-export async function computeResults(db: Db, event: PublicEvent): Promise<ResultsDto> {
+/** Who has joined, in join order, with their ids. Organiser only. */
+async function peopleWithIds(db: Db, eventId: string): Promise<ResultsDto['people']> {
+  const rows = await db.query<{ id: string; name: string; responded: boolean }>(
+    `SELECT p.id, p.display_name AS name, EXISTS (SELECT 1 FROM day_willingness w WHERE w.participant_id = p.id) AS responded
+       FROM participants p WHERE p.event_id = $1 ORDER BY p.created_seq`,
+    [eventId],
+  );
+  return rows.map((r) => ({ id: r.id, name: r.name, responded: r.responded === true }));
+}
+
+/** Aggregates plus who has joined and who has responded (names only, join order; ids too when `withIds`, for the organiser). */
+export async function computeResults(db: Db, event: PublicEvent, opts: { withIds?: boolean } = {}): Promise<ResultsDto> {
   const responses = await loadEngineResponses(db, event.id);
   const ev: EventData = {
     slots: event.days.map((d) => ({ id: slotIdFor(d.date), iso: d.date, win: { s: d.start, e: d.end } })),
@@ -87,6 +100,6 @@ export async function computeResults(db: Db, event: PublicEvent): Promise<Result
     best,
     days,
     slots,
-    people: event.participants.map((p) => ({ name: p.name, responded: p.responded })),
+    people: opts.withIds ? await peopleWithIds(db, event.id) : event.participants.map((p) => ({ name: p.name, responded: p.responded })),
   };
 }

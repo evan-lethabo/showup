@@ -89,14 +89,30 @@ export default function LiveResults({ v }: { v: any }) {
         <div className="lr-people">
           <h2 className="comp-h">Responses</h2>
           <div className="avatars">
-            {v.resultsPeople.map((p: any) => (
-              <span key={p.key} className={p.cls} role="img" aria-label={p.aria} tabIndex={0}>
-                <span aria-hidden="true">{p.initial}</span>
-                <span className="av-tip" aria-hidden="true">
-                  {p.tip}
+            {v.resultsPeople.map((p: any) =>
+              p.removable ? (
+                <button
+                  key={p.key}
+                  type="button"
+                  className={p.cls + ' is-removable'}
+                  aria-label={p.removeAria}
+                  aria-haspopup="dialog"
+                  onClick={p.remove}
+                >
+                  <span aria-hidden="true">{p.initial}</span>
+                  <span className="av-tip" aria-hidden="true">
+                    {p.tip}
+                  </span>
+                </button>
+              ) : (
+                <span key={p.key} className={p.cls} role="img" aria-label={p.aria} tabIndex={0}>
+                  <span aria-hidden="true">{p.initial}</span>
+                  <span className="av-tip" aria-hidden="true">
+                    {p.tip}
+                  </span>
                 </span>
-              </span>
-            ))}
+              ),
+            )}
           </div>
         </div>
       ) : null}

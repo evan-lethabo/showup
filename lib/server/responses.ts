@@ -240,7 +240,18 @@ export function toEngineResponses(people: readonly ParticipantRow[], rows: Rows)
   });
 }
 
-/** Removes a guest and, by cascade, their ranges, willingness and conditions. */
+/**
+ * Removes a guest and, by cascade, their ranges, willingness, conditions and votes. Used when a guest leaves and when the organiser
+ * removes them. Returns whether anyone was removed. Nothing stops them joining again with the invite link.
+ */
+export async function removeParticipant(db: Db, eventId: string, participantId: string): Promise<boolean> {
+  const rows = await db.query<{ id: string }>('DELETE FROM participants WHERE id = $1 AND event_id = $2 RETURNING id', [
+    participantId,
+    eventId,
+  ]);
+  return rows.length > 0;
+}
+
 export async function leaveEvent(db: Db, eventId: string, participantId: string): Promise<void> {
-  await db.query('DELETE FROM participants WHERE id = $1 AND event_id = $2', [participantId, eventId]);
+  await removeParticipant(db, eventId, participantId);
 }

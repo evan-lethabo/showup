@@ -487,7 +487,11 @@
   padding-top: 36px;
 }
 
-/* Response circles are hover-only: nothing happens on click */
+/* Response circles are hover-only for guests; the organiser can tap one to remove that guest */
 .lr-av {
   cursor: default;
+}
+.lr-av.is-removable {
+  cursor: pointer;
+  border: 0;
 }
