@@ -10,4 +10,4 @@ next-env.d.ts
 .vercel
 
 # local metrics results
-scripts/engineering-metrics.md
+scripts/metrics.md
