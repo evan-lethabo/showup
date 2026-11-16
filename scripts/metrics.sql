@@ -16,7 +16,7 @@
 -- organiser editing an event's days or length clears guests' answers, so those guests stop counting as responders.
 --
 -- Not answerable from this schema: "finalised proposals whose slot wasn't the one with the most free people".
--- See docs/metrics.md for what would need to be logged.
+-- See scripts/engineering-metrics.md ("What would need to be logged").
 
 BEGIN TRANSACTION READ ONLY;
 
